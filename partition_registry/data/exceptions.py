@@ -16,6 +16,10 @@ class IncorrectSourceNameError(ValueError):
 
 class UnknownPartitionStrategyError(ValueError):
     ...
+    
+
+class UnknownPartitionTypeError(ValueError):
+    ...
 
 
 class IncorrectProviderNameError(ValueError):
