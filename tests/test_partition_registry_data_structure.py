@@ -8,7 +8,7 @@ from typing import List
 from partition_registry.data.partition import Partition
 from partition_registry.data.event_state import EventState
 from partition_registry.data.partition_registry_event import PartitionRegistryEvent
-from partition_registry.data.partition_registry_data_structure import PartitionRegistryStructure
+from partition_registry.data.partition_registry_structure import PartitionRegistryStructure
 
 
 @given(
