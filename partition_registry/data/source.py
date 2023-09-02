@@ -4,7 +4,7 @@ from typing import Union
 
 from partition_registry.data.partition_strategy import PartitionStrategy
 from partition_registry.data.entity_type import BigQuery
-from partition_registry.data.entity_type import Pentaho
+from partition_registry.data.entity_type import PostgreSQL
 from partition_registry.data.entity_type import AirflowDAG
 from partition_registry.data.provider import Provider
 
@@ -34,7 +34,7 @@ class Source:
     name: str
     partition_strategy: PartitionStrategy
     provider: Provider
-    entity_type: Union[BigQuery, Pentaho, AirflowDAG]
+    entity_type: Union[BigQuery, PostgreSQL, AirflowDAG]
 
     def __post_init__(self) -> None:
         if not (self.name or self.name.strip()):
@@ -68,8 +68,8 @@ class BigQuerySource(Source):
 
 
 @dc.dataclass(frozen=True)
-class PentahoSource(Source):
-    entity_type: Pentaho = dc.field(default_factory=Pentaho)
+class PostgreSQLSource(Source):
+    entity_type: PostgreSQL = dc.field(default_factory=PostgreSQL)
 
     def __post_init__(self) -> None:
         correct_table_name_with_schema_regexp = r"^([a-z_][a-z0-9_$]*\.)[a-z_][a-z0-9_$]*$"

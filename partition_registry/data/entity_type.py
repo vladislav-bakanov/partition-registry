@@ -8,9 +8,9 @@ class BigQuery(EntityType):
         return 'BIG_QUERY'
 
 
-class Pentaho(EntityType):
+class PostgreSQL(EntityType):
     def __str__(self) -> str:
-        return 'PENTAHO'
+        return 'POSTGRESQL'
 
 
 class AirflowDAG(EntityType):
