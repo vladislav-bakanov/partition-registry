@@ -1,12 +1,18 @@
-import dataclasses as dc
-
-from partition_registry.data.exceptions import IncorrectProviderNameError
-
-
-@dc.dataclass(frozen=True)
 class Provider:
-    name: str
+    def __str__(self) -> str:
+        raise NotImplementedError("Method should be implemented...")
 
-    def __post_init__(self) -> None:
-        if not self.name.strip():
-            raise IncorrectProviderNameError("Provider name is empty")
+
+class BigQuery(Provider):
+    def __str__(self) -> str:
+        return 'BIG_QUERY'
+
+
+class PostgreSQL(Provider):
+    def __str__(self) -> str:
+        return 'POSTGRESQL'
+
+
+class AirflowDAG(Provider):
+    def __str__(self) -> str:
+        return 'AIRFLOW_DAG'

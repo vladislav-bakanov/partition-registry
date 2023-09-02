@@ -1,32 +1,44 @@
-from typing import Set
+from typing import Tuple
+from typing import Dict
 from typing import List
+import datetime as dt
 
 from partition_registry.data.partition_registry_event import PartitionRegistryEvent
-from partition_registry.data.partition import ReadyPartition
-from partition_registry.data.partition import NotReadyPartition
-from partition_registry.data.partition import DesiredPartition
+from partition_registry.data.partition import Partition
 
 from partition_registry.data.exceptions import UnknownPartitionTypeError
 
 
-class PartitionRegistryDataStructure:
+class PartitionRegistryStructure:
     def __init__(
         self,
-        events: Set[PartitionRegistryEvent]
+        events: List[PartitionRegistryEvent]
     ) -> None:
-        self.events = list(events)
-        self.missed_partitions: List[NotReadyPartition] = []
-        for event in self.events:
-            if isinstance(event.partition, ReadyPartition):
-                prev_partition = NotReadyPartition(event.partition.startpoint, event.partition.endpoint)
-                if prev_partition in self.missed_partitions:
-                    self.missed_partitions.remove(prev_partition)
-            elif isinstance(event.partition, NotReadyPartition):
-                self.missed_partitions.append(event.partition)
-            else:
-                raise UnknownPartitionTypeError(f"Expected partition type <NotReadyPartition / ReadyPartition>, got {type(event.partition)}")
+        self.events = self.optimize_event_stream(events)
 
-    def is_partition_ready(self, desired_partition: DesiredPartition) -> bool:
+    def optimize_event_stream(
+        self,
+        events: List[PartitionRegistryEvent]
+    ) -> List[PartitionRegistryEvent]:
+        """
+        Event stream optimizer allows left only last actions for the spesified interval
+        Optimizer complexity is O(n)
+        
+        Args:
+            events (List[PartitionRegistryEvent]): _description_
+
+        Returns:
+            List[PartitionRegistryEvent]: _description_
+        """
+        optimized_event_stream: Dict[Tuple[dt.datetime, dt.datetime], PartitionRegistryEvent] = {}
+        
+        for event in events:
+            key = (event.partition.startpoint, event.partition.endpoint)
+            if key not in optimized_event_stream or event.created_date > optimized_event_stream[key].created_date:
+                optimized_event_stream[key] = event
+        return list(optimized_event_stream.values())
+
+    def is_partition_ready(self, desired_partition: Partition) -> bool:
         """Is desired partition ready based on known events.
 
         Args:
@@ -40,8 +52,16 @@ class PartitionRegistryDataStructure:
         if not self.events:
             return False
 
-        for missed_partition in self.missed_partitions:
-            if missed_partition.startpoint <= desired_partition.startpoint <= missed_partition.endpoint:
+        for event in self.events:
+            if event.partition.startpoint >= desired_partition.endpoint:
+                pass
+
+            if event.partition.endpoint <= desired_partition.startpoint:
+                pass
+
+            # If even one unique event is not ready - desired partition
+            # is not comprehensevely covered
+            if not event.is_ready:
                 return False
 
         return True

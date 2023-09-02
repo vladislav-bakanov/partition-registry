@@ -1,11 +1,18 @@
 import dataclasses as dc
 import datetime as dt
 
+from typing import Union
+
+from partition_registry.data.source import BigQuerySource
+from partition_registry.data.source import PostgreSQLSource
+from partition_registry.data.source import AirflowDAGSource
+
 from partition_registry.data.exceptions import NotPositiveIntervalError
 
 
 @dc.dataclass
 class Partition:
+    source: Union[BigQuerySource, PostgreSQLSource, AirflowDAGSource]
     startpoint: dt.datetime
     endpoint: dt.datetime
 
@@ -18,21 +25,7 @@ class Partition:
         if self.startpoint >= self.endpoint:
             raise NotPositiveIntervalError(f"Partition \"{self}\" represented as negative interval")
 
-
-@dc.dataclass
-class DesiredPartition(Partition):
-    ...
-
-
-@dc.dataclass
-class ReadyPartition(Partition):
     @property
-    def is_ready(self):
-        return True
-
-
-@dc.dataclass
-class NotReadyPartition(Partition):
-    @property
-    def is_ready(self):
-        return False
+    def size_in_sec(self) -> int:
+        """Interval size represented as number of seconds in interval"""
+        return int((self.endpoint - self.startpoint).total_seconds())

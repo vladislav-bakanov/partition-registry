@@ -1,35 +1,46 @@
 import dataclasses as dc
 import datetime as dt
-from typing import Union
 
-from partition_registry.data.partition import ReadyPartition
-from partition_registry.data.partition import NotReadyPartition
+from partition_registry.data.partition import Partition
+from partition_registry.data.event_state import EventState
 
 from partition_registry.data.exceptions import DifferentEventsWithTheSameTimestampError
-from partition_registry.data.exceptions import UnknownPartitionTypeError
+from partition_registry.data.exceptions import UnknownEventStateError
 
 
 @dc.dataclass
 class PartitionRegistryEvent:
-    partition: Union[ReadyPartition, NotReadyPartition]
+    partition: Partition
+    state: EventState
     created_date: dt.datetime
 
-    def __str__(self) -> str:
-        return f"""Source event:
-    Interval: [{self.partition.startpoint} : {self.partition.endpoint}]
-       State: | {'  READY  ' if self.partition.is_ready else 'NOT_READY'} |
-     Created: | {self.created_date} |
-    """
-
-    def __hash__(self) -> int:
-        return hash((self.partition.startpoint, self.partition.endpoint, self.partition.is_ready, self.created_date))
+    @property
+    def is_ready(self) -> bool:
+        if self.state == EventState.READY:
+            return True
+        elif self.state == EventState.NOT_READY:
+            return False
+        else:
+            raise UnknownEventStateError(
+                f"Expected {EventState.READY}|{EventState.NOT_READY} event state, but got {self.state}"
+            )
 
     def validate(self) -> None:
         """Validate Partition Registry event. Also validates partition. 
 
         Raises:
-            DifferentEventsWithTheSameTimestampError: in case if event was created earlier or exactly at the time of partition ended.
+            DifferentEventsWithTheSameTimestampError:
+                in case if event was created earlier or exactly at the time of partition ended.
         """
         self.partition.validate()
         if self.created_date <= self.partition.endpoint:
-            raise DifferentEventsWithTheSameTimestampError("Event shouldn't be created earlier or exactly at the time of partition ended")
+            raise DifferentEventsWithTheSameTimestampError(
+                "Event shouldn't be created earlier or exactly at the time of partition ended"
+            )
+
+    def __str__(self) -> str:
+        return f"""Source event:
+    Interval: [{self.partition.startpoint} : {self.partition.endpoint}]
+       State: | {'  READY  ' if self.is_ready else 'NOT_READY'} |
+     Created: | {self.created_date} |
+    """
