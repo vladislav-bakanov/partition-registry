@@ -1,13 +1,17 @@
 import dataclasses as dc
 import datetime as dt
+from typing import Union
 
-from partition_registry.data.partition import SourcePartition
+from partition_registry.data.partition import ReadyPartition
+from partition_registry.data.partition import NotReadyPartition
+
 from partition_registry.data.exceptions import DifferentEventsWithTheSameTimestampError
+from partition_registry.data.exceptions import UnknownPartitionTypeError
 
 
 @dc.dataclass
 class PartitionRegistryEvent:
-    partition: SourcePartition
+    partition: Union[ReadyPartition, NotReadyPartition]
     created_date: dt.datetime
 
     def __str__(self) -> str:
@@ -15,7 +19,7 @@ class PartitionRegistryEvent:
     Interval: [{self.partition.startpoint} : {self.partition.endpoint}]
        State: | {'  READY  ' if self.partition.is_ready else 'NOT_READY'} |
      Created: | {self.created_date} |
-"""
+    """
 
     def __hash__(self) -> int:
         return hash((self.partition.startpoint, self.partition.endpoint, self.partition.is_ready, self.created_date))
