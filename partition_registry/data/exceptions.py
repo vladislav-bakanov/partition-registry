@@ -20,15 +20,11 @@ class UnknownProviderError(ValueError):
 
 class IncorrectSourceNameError(ValueError):
     ...
-    
-
-class IncorrectDestinationNameError(ValueError):
-    ...
 
 
 class UnknownPartitionStrategyError(ValueError):
     ...
-    
+
 
 class UnknownEventStateError(ValueError):
     ...
