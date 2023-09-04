@@ -6,4 +6,4 @@ from partition_registry.data.provider_type import ProviderType
 @dc.dataclass(frozen=True)
 class Provider:
     name: str
-    type: ProviderType
+    provider_type: ProviderType
