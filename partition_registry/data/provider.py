@@ -1,18 +1,9 @@
+import dataclasses as dc
+
+from partition_registry.data.provider_type import ProviderType
+
+
+@dc.dataclass(frozen=True)
 class Provider:
-    def __str__(self) -> str:
-        raise NotImplementedError("Method should be implemented...")
-
-
-class BigQuery(Provider):
-    def __str__(self) -> str:
-        return 'BIG_QUERY'
-
-
-class PostgreSQL(Provider):
-    def __str__(self) -> str:
-        return 'POSTGRESQL'
-
-
-class AirflowDAG(Provider):
-    def __str__(self) -> str:
-        return 'AIRFLOW_DAG'
+    name: str
+    type: ProviderType
