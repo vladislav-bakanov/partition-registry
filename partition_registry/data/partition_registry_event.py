@@ -43,6 +43,7 @@ class PartitionRegistryEvent:
                 in case if event was created earlier or exactly at the time of partition ended.
         """
         self.source.validate()
+        self.provider.validate()
         self.partition.validate()
         if self.created_date <= self.partition.endpoint:
             raise DifferentEventsWithTheSameTimestampError(
