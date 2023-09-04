@@ -1,28 +1,17 @@
 import re
 import dataclasses as dc
-from typing import Union
 
 from partition_registry.data.partition_strategy import PartitionStrategy
-from partition_registry.data.provider import BigQuery
-from partition_registry.data.provider import PostgreSQL
-from partition_registry.data.provider import AirflowDAG
+from partition_registry.data.provider import Provider
+from partition_registry.data.source_type import SourceType
 
 from partition_registry.data.exceptions import IncorrectSourceNameError
 from partition_registry.data.exceptions import UnknownSourceError
 
 
-@dc.dataclass(frozen=True)
 class Source:
-    """Source
-
-    Classification by types:
-        - BigQuery source
-        - Pentaho source
-        - Airflow DAG source
-
-    Classification by partition:
-        - PARTITIONED
-        - NOT_PARTITIONED
+    """
+    Source is a stateful entity, which can be ready or not ready.
 
     Raises:
         IncorrectSourceNameError:
@@ -30,13 +19,19 @@ class Source:
         UnknownSourceError:
             If source not presented as one of allowed source types.
     """
-    name: str
     partition_strategy: PartitionStrategy
-    provider: Union[BigQuery, PostgreSQL, AirflowDAG]
+    source_type: SourceType
 
-    def __post_init__(self) -> None:
-        if not (self.name or self.name.strip()):
-            raise IncorrectSourceNameError("Source name is empty")
+    @property
+    def source_name(self) -> str:
+        raise NotImplementedError("Property \"source_name\" should be implemented...")
+
+    def validate(self) -> None:
+        if not (self.source_name or self.source_name.strip()):
+            raise IncorrectSourceNameError("Source name shouldn't be empty...")
+
+    def __str__(self) -> str:
+        raise NotImplementedError("Method \"<__str__>\" should be implemented...")
 
     @property
     def is_partitioned(self) -> bool:
@@ -52,32 +47,40 @@ class Source:
         raise UnknownSourceError(f"Source \"{self}\" is unknown")
 
 
-@dc.dataclass(frozen=True)
+@dc.dataclass
 class BigQuerySource(Source):
-    provider: BigQuery = dc.field(default_factory=BigQuery)
+    project_id: str
+    dataset_id: str
+    table_id: str
+    source_type = SourceType.BIGQUERY
 
-    def __post_init__(self) -> None:
-        correct_table_name_with_schema_regexp = r"^([a-zA-Z0-9_-]+\.[a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+$"
-        if not re.match(correct_table_name_with_schema_regexp, self.name):
+    @property
+    def source_name(self):
+        return f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+
+    def validate(self) -> None:
+        super().validate()
+        if not re.match(r"^([a-zA-Z0-9_-]+\.[a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+$", self.source_name):
             raise IncorrectSourceNameError(
                 "Incorrect source name. Expected format: PROJECT_ID.DATASET_ID.TABLE_NAME, "
-                f"but given: \"{self.name}\""
+                f"but given: \"{self.source_name}\""
             )
 
 
-@dc.dataclass(frozen=True)
+@dc.dataclass
 class PostgreSQLSource(Source):
-    provider: PostgreSQL = dc.field(default_factory=PostgreSQL)
+    source_type = SourceType.POSTGRESQL
 
-    def __post_init__(self) -> None:
-        correct_table_name_with_schema_regexp = r"^([a-z_][a-z0-9_$]*\.)[a-z_][a-z0-9_$]*$"
-        if not re.match(correct_table_name_with_schema_regexp, self.name):
+    def validate(self) -> None:
+        super().validate()
+        if not re.match(r"^([a-z_][a-z0-9_$]*\.)[a-z_][a-z0-9_$]*$", self.source_name):
             raise IncorrectSourceNameError(
                 "Incorrect source name. Expected: SCHEMA.TABLE_NAME, "
-                f"but given: \"{self.name}\"",
+                f"but given: \"{self.source_name}\"",
             )
 
 
-@dc.dataclass(frozen=True)
+@dc.dataclass
 class AirflowDAGSource(Source):
-    provider: AirflowDAG = dc.field(default_factory=AirflowDAG)
+    name: str
+    source_type = SourceType.AIRFLOW_DAG
