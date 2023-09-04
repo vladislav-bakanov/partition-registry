@@ -1,25 +1,17 @@
 import dataclasses as dc
 import datetime as dt
 
-from typing import Union
-
-# from partition_registry.data.source import BigQuerySource
-# from partition_registry.data.source import PostgreSQLSource
-# from partition_registry.data.source import AirflowDAGSource
-
-from partition_registry.data.partition_size import PartitionSize
-
 from partition_registry.data.exceptions import NotPositiveIntervalError
 
 
 @dc.dataclass
 class Partition:
-    # source: Union[BigQuerySource, PostgreSQLSource, AirflowDAGSource]
     startpoint: dt.datetime
     endpoint: dt.datetime
 
     def validate(self) -> None:
-        """Validate partition.
+        """
+        Validation for partition
 
         Raises:
             NotPositiveIntervalError: in case if partition initialized as not positive interval (<0).
