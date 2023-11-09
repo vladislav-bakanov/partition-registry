@@ -1,0 +1,6 @@
+There is consumers and producers of partitions.
+
+Constraints:
+- Producers can seal and open partitions
+- Readers can read it whenever they want
+- Reader can 
