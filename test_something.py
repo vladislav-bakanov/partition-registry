@@ -1,4 +1,4 @@
-from partition_registry_v2.data.partition import UnlockedPartition
+from partition_registry.data.partition import UnlockedPartition
 import datetime as dt
 
 
@@ -15,4 +15,9 @@ t = UnlockedPartition(
 from collections import defaultdict
 
 t = defaultdict(set)
-print(t)
+message = (
+        "You are trying to get root page of Partition Registry Service. "
+        "Please, visit our documentation page (YOUR_URL/redocs) to get to "
+        "know with complete functional"
+    )
+print(message)

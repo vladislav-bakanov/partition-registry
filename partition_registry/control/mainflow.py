@@ -3,27 +3,49 @@ from typing import Dict
 
 from fastapi import FastAPI
 
-
-from partition_registry_v2.data.partition import Partition
-from partition_registry_v2.data.queue import PartitionsQueue
-from partition_registry_v2.data.source import Source
-
+from partition_registry.data.partition import Partition
+from partition_registry.data.queue import MainQueue
+from partition_registry.data.source import Source
+from partition_registry.data.provider import Provider
+from partition_registry.data.registry import 
 
 app = FastAPI()
-queue = PartitionsQueue(100)
+queue = MainQueue(100)
+registry = 
 
 @app.get("/")
 def read_root() -> Dict[str, str]:
-    message = """You are trying to get root page of Partition Registry Service. Please, visit our documentation page (YOUR_URL/redocs) to get to know with complete functional"""
+    message = "You are trying to get root page of Partition Registry Service. " \
+        "Please, visit our documentation page (YOUR_URL/redocs) to get to know with complete functional"
     return {"message": message}
 
 
-@app.get("/sources/{source}/lock")
+@app.post("/sources/{source.name}/register")
+def register_source(source: Source) -> Dict[str, str]:
+    
+
+
+@app.post("/sources/{source.name}/providers/{provider.name}/partitions/lock")
 def lock_partition(
     source: Source,
+    provider: Provider,
+    start: dt.datetime,
+    end: dt.datetime
+) -> Dict[str, str]:
+    message = (
+        "You are trying to get root page of Partition Registry Service. "
+        "Please, visit our documentation page (YOUR_URL/redocs) to get to "
+        "know with complete functional"
+    )
+    return {"message": message}
+
+
+@app.post("/sources/{source}/providers/{provider}/partitions/unlock")
+def lock_partition(
+    source: Source,
+    provider: Provider,
     start: dt.datetime,
     end: dt.datetime,
-    provider: str
 ) -> Dict[str, str]:
     message = """You are trying to get root page of Partition Registry Service. Please, visit our documentation page (YOUR_URL/redocs) to get to know with complete functional"""
     return {"message": message}
