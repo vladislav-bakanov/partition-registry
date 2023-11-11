@@ -5,10 +5,12 @@ import pytz
 from functools import cached_property
 
 from typing import Protocol
+from partition_registry.data.source import Source
 from partition_registry.data.provider import Provider
 
 
 class Partition(Protocol):
+    source: Source
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
@@ -29,11 +31,11 @@ class Partition(Protocol):
 
     def __repr__(self) -> str:
         return self.__str__()
-    
 
 
 @dc.dataclass(frozen=True)
 class UnknownPartition(Partition):
+    source: Source
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
@@ -48,6 +50,7 @@ class UnknownPartition(Partition):
 
 @dc.dataclass(frozen=True)
 class LockedPartition(Partition):
+    source: Source
     start: dt.datetime
     end: dt.datetime
     provider: Provider
@@ -66,6 +69,7 @@ class LockedPartition(Partition):
 
 @dc.dataclass(frozen=True)
 class UnlockedPartition(LockedPartition):
+    source: Source
     start: dt.datetime
     end: dt.datetime
     provider: Provider

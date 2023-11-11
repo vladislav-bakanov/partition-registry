@@ -76,7 +76,8 @@ def check_partition_readiness(
     partition_start: dt.datetime,
     partition_end: dt.datetime,
 ) -> Dict[str, str | bool]:
-    partition = UnknownPartition(partition_start, partition_end)
+    source = Source(source_name)
+    partition = UnknownPartition(source, partition_start, partition_end)
     return {
         "source": source_name,
         "partition": str(partition),
