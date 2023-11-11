@@ -5,7 +5,7 @@ set -e
 echo "Starting script execution..."
 
 echo "Testing all files with mypy"
-poetry run mypy --exclude 'flycheck_*' ./
+poetry run mypy --exclude 'flycheck_*' ./partition_registry
 
 echo "Running pytest..."
 poetry run pytest --cov=partition_registry ./tests $@

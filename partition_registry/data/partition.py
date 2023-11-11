@@ -8,15 +8,10 @@ from typing import Protocol
 from partition_registry.data.provider import Provider
 
 
-@dc.dataclass(frozen=True)
 class Partition(Protocol):
     start: dt.datetime
     end: dt.datetime
-    provider: Provider
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    
-    def __post_init__(self) -> None:
-        self.validate()
     
     @cached_property
     def size(self) -> float:
@@ -45,7 +40,6 @@ class UnknownPartition(Partition):
     
     def __str__(self) -> str:
         return "Partition(\n  " \
-            f"provider='{self.provider}',\n  " \
             f"start='{self.start}',\n  " \
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n" \
@@ -56,6 +50,7 @@ class UnknownPartition(Partition):
 class LockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
+    provider: Provider
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
@@ -73,6 +68,7 @@ class LockedPartition(Partition):
 class UnlockedPartition(LockedPartition):
     start: dt.datetime
     end: dt.datetime
+    provider: Provider
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     unlocked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))

@@ -1,7 +1,6 @@
 from typing import Protocol
 import dataclasses as dc
 
-@dc.dataclass(frozen=True)
 class Status(Protocol): ...
 
 @dc.dataclass(frozen=True)
@@ -15,8 +14,7 @@ class FailedStatus(Status):
 class SuccededOnAddToQueueStatus(SuccessStatus): ...
 
 @dc.dataclass(frozen=True)
-class FailedOnAddToQueueStatus(FailedStatus):
-    pass
+class FailedOnAddToQueueStatus(FailedStatus): ...
 
 @dc.dataclass(frozen=True)
 class SuccededPersist(Status): ...
@@ -41,3 +39,9 @@ class SuccededUnlock(Status): ...
 
 @dc.dataclass(frozen=True)
 class FailedUnlock(FailedStatus): ...
+
+@dc.dataclass(frozen=True)
+class SuccededRegistration(SuccessStatus): ...
+
+@dc.dataclass(frozen=True)
+class FailedRegistration(FailedStatus): ...
