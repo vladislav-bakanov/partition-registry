@@ -10,7 +10,6 @@ from partition_registry.data.provider import Provider
 
 
 class Partition(Protocol):
-    source: Source
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
@@ -35,13 +34,12 @@ class Partition(Protocol):
 
 @dc.dataclass(frozen=True)
 class UnknownPartition(Partition):
-    source: Source
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     
     def __str__(self) -> str:
-        return "Partition(\n  " \
+        return "UnknownPartition(\n  " \
             f"start='{self.start}',\n  " \
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n" \
@@ -50,7 +48,6 @@ class UnknownPartition(Partition):
 
 @dc.dataclass(frozen=True)
 class LockedPartition(Partition):
-    source: Source
     start: dt.datetime
     end: dt.datetime
     provider: Provider
@@ -69,7 +66,6 @@ class LockedPartition(Partition):
 
 @dc.dataclass(frozen=True)
 class UnlockedPartition(LockedPartition):
-    source: Source
     start: dt.datetime
     end: dt.datetime
     provider: Provider

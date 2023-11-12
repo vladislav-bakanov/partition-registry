@@ -1,5 +1,6 @@
 from typing import Protocol
 import dataclasses as dc
+from typing import Any
 
 class Status(Protocol): ...
 
@@ -45,3 +46,9 @@ class SuccededRegistration(SuccessStatus): ...
 
 @dc.dataclass(frozen=True)
 class FailedRegistration(FailedStatus): ...
+
+@dc.dataclass(frozen=True)
+class EXIST(Status): ...
+
+@dc.dataclass(frozen=True)
+class NOT_EXIST(Status): ...
