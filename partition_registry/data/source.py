@@ -7,6 +7,11 @@ from partition_registry.data.access_token import AccessToken
 class Source(Protocol):
     name: str
 
+    def validate(self) -> None:
+        for c in self.name:
+            if not c.strip():
+                raise ValueError("Expected that source name doesn't contain spaces...")
+
     def __str__(self) -> str:
         ...
 

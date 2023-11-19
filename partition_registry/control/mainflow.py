@@ -50,11 +50,11 @@ def read_root() -> dict[str, str | int]:
 
 
 @app.post("/sources/register")
-def register_source(source_name: str) -> dict[str, Any] | HTTPException:
+def register_source(source_name: str) -> dict[str, Any]:
     response = action.register_source(source_name, source_registry)
     match response:
         case FailedRegistration():
-            return HTTPException(HTTPStatus.CONFLICT, response.error_message)
+            return HTTPException(HTTPStatus.CONFLICT, response.error_message).__dict__
         case SuccededRegistration():
             return RegistrationResponse(HTTPStatus.OK, response.registered_object).__dict__
 
@@ -66,7 +66,7 @@ def lock_partition(
     access_token: str,
     partition_start: dt.datetime,
     partition_end: dt.datetime
-) -> dict[str, Any] | HTTPException:
+) -> dict[str, Any]:
 
     response = action.lock_partition(
         source_name,
@@ -81,7 +81,7 @@ def lock_partition(
 
     match response:
         case FailedLock():
-            return HTTPException(HTTPStatus.CONFLICT, response.error_message)
+            return HTTPException(HTTPStatus.CONFLICT, response.error_message).__dict__
         case SuccededLock():
             return PartitionLockResponse(
                 status_code=HTTPStatus.OK,
