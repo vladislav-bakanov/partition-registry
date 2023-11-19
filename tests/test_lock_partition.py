@@ -51,16 +51,7 @@ def test__lock_partition(
     registered_source = RegisteredSource(source_name, partititon_created_at, AccessToken(access_token))
     source_registry.find_registered_source.return_value = registered_source
     
-    response = lock_partition(
-        source_name,
-        provider_name,
-        access_token,
-        start,
-        end,
-        partition_registry,
-        provider_registry,
-        source_registry
-    )
+    response = lock_partition(source_name, provider_name, access_token, start, end, partition_registry, provider_registry, source_registry)
 
     assert isinstance(response, SuccededLock), \
         f"Expected succeded lock, got: {response}..."
