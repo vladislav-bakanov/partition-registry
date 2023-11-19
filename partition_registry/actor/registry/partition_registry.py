@@ -2,6 +2,7 @@ import datetime as dt
 import pytz
 from collections import defaultdict
 from typing import Optional
+from typing import SupportsIndex
 
 import uuid
 
@@ -21,11 +22,12 @@ from partition_registry.data.partition import SimplePartition
 from partition_registry.data.status import Status
 from partition_registry.data.status import FailedLock
 from partition_registry.data.status import SuccededLock
+from partition_registry.data.status import FailedRegistration
+from partition_registry.data.status import SuccededRegistration
 from partition_registry.data.status import FailedUnlock
 
 
-
-class PartitionRegistry(Registry[Partition | RegisteredProvider | RegisteredSource, Status]):
+class PartitionRegistry:
     def __init__(
         self,
         # session: Session,
@@ -35,8 +37,8 @@ class PartitionRegistry(Registry[Partition | RegisteredProvider | RegisteredSour
         self.table = table
         self.cache: dict[
             tuple[RegisteredSource, RegisteredProvider],
-            list[LockedPartition | UnlockedPartition]
-        ] = defaultdict(list)
+            set[LockedPartition | UnlockedPartition]
+        ] = defaultdict(set)
 
     def lock(
         self,
@@ -45,7 +47,7 @@ class PartitionRegistry(Registry[Partition | RegisteredProvider | RegisteredSour
         partition: SimplePartition
     ) -> LockedPartition:
         locked_partition = LockedPartition(partition.start, partition.end, partition.created_at)
-        self.cache[(source, provider)].append(locked_partition)
+        self.cache[(source, provider)].add(locked_partition)
         return locked_partition
     
     def unlock(
@@ -58,8 +60,8 @@ class PartitionRegistry(Registry[Partition | RegisteredProvider | RegisteredSour
             return FailedUnlock(f"Partition {partition} doesn't seem to be locked...")
         
         unlocked_partition = UnlockedPartition(partition.start, partition.end, partition.created_at, partition.locked_at)
-        self.cache[(source, provider)].pop(partition)
-        self.cache[(source, provider)] += unlocked_partition
+        self.cache[(source, provider)].remove(partition)
+        self.cache[(source, provider)].add(unlocked_partition)
         return unlocked_partition
 
 

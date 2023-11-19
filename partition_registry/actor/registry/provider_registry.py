@@ -10,9 +10,10 @@ from partition_registry.data.registry import Registry
 from partition_registry.data.provider import SimpleProvider
 from partition_registry.data.access_token import AccessToken
 from partition_registry.data.provider import RegisteredProvider
+from partition_registry.data.status import FailedRegistration
 
 
-class ProviderRegistry(Registry):
+class ProviderRegistry:
     def __init__(
         self,
         # session: Session,
@@ -32,6 +33,18 @@ class ProviderRegistry(Registry):
 
         self.cache[provider] = RegisteredProvider(provider.name, access_token)
         return self.cache[provider]
+    
+    def register(
+        self,
+        provider: SimpleProvider,
+        access_token: AccessToken
+    ) -> RegisteredProvider | FailedRegistration:
+        if self.is_registered(provider):
+            return FailedRegistration(f"{provider} already registered...")
+
+        self.cache[provider] = RegisteredProvider(provider.name, access_token)
+        return self.cache[provider]
+
 
     def is_registered(
         self,

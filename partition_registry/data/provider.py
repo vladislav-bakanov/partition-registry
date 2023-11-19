@@ -25,6 +25,6 @@ class SimpleProvider(Provider):
 class RegisteredProvider(Provider):
     name: str
     access_token: AccessToken
-    
+
     def __str__(self) -> str:
         return f"RegisteredProvider(name={self.name}, access_token={self.access_token})"

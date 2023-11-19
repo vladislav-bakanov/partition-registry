@@ -25,14 +25,13 @@ def lock_partition(
 ) -> SuccededLock | FailedLock:
     simple_source = SimpleSource(source_name)
     simple_provider = SimpleProvider(provider_name)
-    access_token = AccessToken(access_token)
     simple_partition = SimplePartition(start, end)
 
     registered_source = source_registry.get_registered_source(simple_source)
     if not registered_source:
         return FailedLock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
-    
-    registered_provider = provider_registry.safe_register(simple_provider, access_token)
+
+    registered_provider = provider_registry.safe_register(simple_provider, AccessToken(access_token))
     if registered_provider.access_token != registered_source.access_token:
         msg = f"{registered_provider} has no access to the {simple_source}... Please, be sure that you use proper access key for the source..."
         return FailedLock(msg)

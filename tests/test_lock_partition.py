@@ -47,7 +47,6 @@ def test__lock_partition(
     
     registered_source = RegisteredSource(source_name, partititon_created_at, AccessToken(access_token))
     source_registry.get_registered_source.return_value = registered_source
-    source_registry.cache = {SimpleSource(source_name): registered_source}
     
     response = lock_partition(
         source_name,

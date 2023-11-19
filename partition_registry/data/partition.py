@@ -1,11 +1,9 @@
 import dataclasses as dc
 import datetime as dt
-import pytz
-
+from typing import Protocol
 from functools import cached_property
 
-from typing import Protocol
-from partition_registry.data.provider import RegisteredProvider
+import pytz
 
 
 class Partition(Protocol):
@@ -23,12 +21,15 @@ class Partition(Protocol):
             raise ValueError("Partition start and end should be different")
         if self.size < 0:
             raise ValueError("Partition start should be earlier than partition end")  # TODO: prepare more explicit error type
-        
+
     def __str__(self) -> str:
         ...
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def __hash__(self) -> int:
+        return hash(str(self.start) + str(self.end))
 
 
 @dc.dataclass(frozen=True)
@@ -59,12 +60,6 @@ class LockedPartition(Partition):
             f"created_at='{self.created_at}',\n  " \
             f"locked_at='{self.locked_at}',\n" \
         ")"
-    
-    def __eq__(self, obj: object) -> bool:
-        if not isinstance(obj, LockedPartition):
-            return False
-        
-        return hash(self.start + self.end) == hash(obj.start + obj.end)
 
 
 @dc.dataclass(frozen=True)

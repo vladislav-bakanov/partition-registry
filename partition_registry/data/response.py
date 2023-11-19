@@ -10,7 +10,6 @@ from partition_registry.data.partition import LockedPartition
 
 class BaseResponse(Protocol):
     status_code: HTTPStatus
-    data: dict[str, Any]
 
 
 @dc.dataclass(frozen=True)
