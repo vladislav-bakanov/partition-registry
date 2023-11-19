@@ -1,12 +1,11 @@
-import uuid
+from typing import Optional
 
-from sqlalchemy.orm import Session
+# from sqlalchemy.orm import Session
 
 # ORM
 from partition_registry.orm import ProviderRegistryORM
 
 # Models
-from partition_registry.data.registry import Registry
 from partition_registry.data.provider import SimpleProvider
 from partition_registry.data.access_token import AccessToken
 from partition_registry.data.provider import RegisteredProvider
@@ -51,3 +50,6 @@ class ProviderRegistry:
         provider: SimpleProvider
     ) -> bool:
         return provider in self.cache
+
+    def find_registered_provider(self, provider: SimpleProvider) -> Optional[RegisteredProvider]:
+        return self.cache.get(provider)

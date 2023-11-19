@@ -23,4 +23,3 @@ class PartitionRegistryORM(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=False)
     locked_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=False)
     unlocked_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=True)
-

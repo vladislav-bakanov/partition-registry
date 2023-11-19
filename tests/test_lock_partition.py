@@ -41,12 +41,15 @@ def test__lock_partition(
     start: dt.datetime,
     end: dt.datetime
 ) -> None:
+    
+    assume(start < end)
+
     provider_registry = ProviderRegistry(MagicMock())
     partition_registry = PartitionRegistry(MagicMock())
     source_registry: SourceRegistry = MagicMock()
     
     registered_source = RegisteredSource(source_name, partititon_created_at, AccessToken(access_token))
-    source_registry.get_registered_source.return_value = registered_source
+    source_registry.find_registered_source.return_value = registered_source
     
     response = lock_partition(
         source_name,

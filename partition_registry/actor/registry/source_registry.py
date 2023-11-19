@@ -45,7 +45,5 @@ class SourceRegistry(Registry[SimpleSource, Status]):
     def is_registered(self, source: SimpleSource) -> bool:
         return source in self.cache
  
-    def get_registered_source(self, source: SimpleSource) -> Optional[RegisteredSource]:
-        if not self.is_registered(source):
-            return None
-        return self.cache[source]
+    def find_registered_source(self, source: SimpleSource) -> Optional[RegisteredSource]:
+        return self.cache.get(source)

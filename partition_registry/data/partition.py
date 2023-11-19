@@ -10,12 +10,12 @@ class Partition(Protocol):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    
+
     @cached_property
     def size(self) -> float:
         """Partition size in seconds"""
         return (self.end - self.start).total_seconds()
-    
+
     def validate(self) -> None:
         if self.start == self.end:
             raise ValueError("Partition start and end should be different")
@@ -37,7 +37,7 @@ class SimplePartition(Partition):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    
+
     def __str__(self) -> str:
         return "SimplePartition(\n  " \
             f"start='{self.start}',\n  " \

@@ -5,8 +5,8 @@ from http import HTTPStatus
 from fastapi import FastAPI
 from fastapi import HTTPException
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import Session
 
 from partition_registry.orm import SourceRegistryORM
 from partition_registry.orm import PartitionRegistryORM
@@ -26,7 +26,7 @@ from partition_registry.data.status import SuccededRegistration
 from partition_registry.data.status import FailedLock
 from partition_registry.data.status import SuccededLock
 
-from partition_registry.data.response import SourceRegistrationResponse
+from partition_registry.data.response import RegistrationResponse
 from partition_registry.data.response import PartitionLockResponse
 
 
@@ -56,7 +56,7 @@ def register_source(source_name: str) -> dict[str, Any] | HTTPException:
         case FailedRegistration():
             return HTTPException(HTTPStatus.CONFLICT, response.error_message)
         case SuccededRegistration():
-            return SourceRegistrationResponse(HTTPStatus.OK, response.registered_object).__dict__
+            return RegistrationResponse(HTTPStatus.OK, response.registered_object).__dict__
 
 
 @app.post("/sources/{source_name}/{provider_name}/lock")

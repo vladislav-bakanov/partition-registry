@@ -54,13 +54,14 @@ class PartitionRegistry:
         self,
         source: RegisteredSource,
         provider: RegisteredProvider,
-        partition: LockedPartition,
+        partition: SimplePartition,
     ) -> UnlockedPartition | FailedUnlock:
-        if not self.is_partition_locked(source, provider, partition):
-            return FailedUnlock(f"Partition {partition} doesn't seem to be locked...")
+        locked_partition = self.find_locked_partition(source, provider, partition)
+        if not locked_partition:
+            return FailedUnlock(f"{partition} was not found among locked...")
         
-        unlocked_partition = UnlockedPartition(partition.start, partition.end, partition.created_at, partition.locked_at)
-        self.cache[(source, provider)].remove(partition)
+        unlocked_partition = UnlockedPartition(locked_partition.start, locked_partition.end, locked_partition.created_at, locked_partition.locked_at)
+        self.cache[(source, provider)].remove(locked_partition)
         self.cache[(source, provider)].add(unlocked_partition)
         return unlocked_partition
 
@@ -71,4 +72,15 @@ class PartitionRegistry:
         provider: RegisteredProvider,
         partition: LockedPartition,
     ) -> bool:
-        return partition in self.cache.get((source, provider), [])
+        return partition in self.cache.get((source, provider), set())
+    
+    def find_locked_partition(
+        self,
+        source: RegisteredSource,
+        provider: RegisteredProvider,
+        partition: SimplePartition,
+    ) -> Optional[LockedPartition]:
+        for p in self.cache.get((source, provider), set()):
+            if isinstance(p, LockedPartition) and p.start == partition.start and p.end == partition.end:
+                return p
+        return None

@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 class SourceRegistryORM(Base):
     __tablename__ = "source_registry"
-    
+
     id: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String, primary_key=True)
     initial_provider_id: Mapped[int] = mapped_column(Integer, nullable=False)

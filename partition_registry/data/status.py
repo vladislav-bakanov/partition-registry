@@ -1,8 +1,13 @@
+import dataclasses as dc
+
 from typing import Protocol
 from typing import Optional
 
-import dataclasses as dc
-from typing import Any
+from partition_registry.data.partition import UnlockedPartition
+from partition_registry.data.partition import LockedPartition
+from partition_registry.data.source import RegisteredSource
+from partition_registry.data.provider import RegisteredProvider
+
 
 class Status(Protocol):
     ...
@@ -50,7 +55,7 @@ class FailedPurification(FailedStatus):
 
 @dc.dataclass(frozen=True)
 class SuccededLock(SuccessStatus):
-    locked_object: Any
+    locked_object: LockedPartition
     message: Optional[str] = dc.field(default=None)
 
 
@@ -61,8 +66,8 @@ class FailedLock(FailedStatus):
 
 @dc.dataclass(frozen=True)
 class SuccededUnlock(SuccessStatus):
-    ...
-
+    unlocked_object: UnlockedPartition
+    message: Optional[str] = dc.field(default=None)
 
 @dc.dataclass(frozen=True)
 class FailedUnlock(FailedStatus):
@@ -71,7 +76,7 @@ class FailedUnlock(FailedStatus):
 
 @dc.dataclass(frozen=True)
 class SuccededRegistration(SuccessStatus):
-    registered_object: Any
+    registered_object: RegisteredSource | RegisteredProvider
     message: Optional[str] = dc.field(default=None)
 
 

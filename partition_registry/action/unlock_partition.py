@@ -9,11 +9,11 @@ from partition_registry.data.provider import SimpleProvider
 from partition_registry.data.partition import SimplePartition
 from partition_registry.data.access_token import AccessToken
 
-from partition_registry.data.status import SuccededLock
-from partition_registry.data.status import FailedLock
+from partition_registry.data.status import SuccededUnlock
+from partition_registry.data.status import FailedUnlock
 
 
-def lock_partition(
+def unlock_partition(
     source_name: str,
     provider_name: str,
     access_token: str,
@@ -22,19 +22,22 @@ def lock_partition(
     partition_registry: PartitionRegistry,
     provider_registry: ProviderRegistry,
     source_registry: SourceRegistry,
-) -> SuccededLock | FailedLock:
+) -> SuccededUnlock | FailedUnlock:
     simple_source = SimpleSource(source_name)
     simple_provider = SimpleProvider(provider_name)
     simple_partition = SimplePartition(start, end)
+    token = AccessToken(access_token)
 
     registered_source = source_registry.find_registered_source(simple_source)
     if not registered_source:
-        return FailedLock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
+        return FailedUnlock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
 
-    registered_provider = provider_registry.safe_register(simple_provider, AccessToken(access_token))
+    registered_provider = provider_registry.safe_register(simple_provider, token)
     if registered_provider.access_token != registered_source.access_token:
         msg = f"{registered_provider} has no access to the {simple_source}... Please, be sure that you use proper access key for the source..."
-        return FailedLock(msg)
+        return FailedUnlock(msg)
 
-    locked_partition = partition_registry.lock(registered_source, registered_provider, simple_partition)
-    return SuccededLock(locked_partition, f"{simple_partition} has been successfully locked...")
+    unlocked_partition = partition_registry.unlock(registered_source, registered_provider, simple_partition)
+    if isinstance(unlocked_partition, FailedUnlock):
+        return unlocked_partition
+    return SuccededUnlock(unlocked_partition, f"{simple_partition} has been successfully locked...")
