@@ -1,0 +1,3 @@
+from partition_registry.orm.partition_registry import PartitionRegistryORM
+from partition_registry.orm.provider_registry import ProviderRegistryORM
+from partition_registry.orm.source_registry import SourceRegistryORM

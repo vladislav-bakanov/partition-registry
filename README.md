@@ -11,3 +11,8 @@ In case if you use several absolutely independent schedulers, but all of them sh
 1. Run poetry installation: `pip3 install poetry==1.0.0`
 1. Install dependencies with poetry: `poetry install`
 1. To ensure, that everything works, run tests: `./test.sh`
+
+
+
+# IDEAs
+Выдавать ключи после регистрации клиентов. Только с этим ключом дальше можно регистрировать провайдеров.

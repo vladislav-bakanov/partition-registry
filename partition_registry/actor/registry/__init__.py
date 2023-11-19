@@ -1,0 +1,3 @@
+from partition_registry.actor.registry.partition_registry import PartitionRegistry
+from partition_registry.actor.registry.source_registry import SourceRegistry
+from partition_registry.actor.registry.provider_registry import ProviderRegistry

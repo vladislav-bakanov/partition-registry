@@ -5,8 +5,7 @@ import pytz
 from functools import cached_property
 
 from typing import Protocol
-from partition_registry.data.source import Source
-from partition_registry.data.provider import Provider
+from partition_registry.data.provider import RegisteredProvider
 
 
 class Partition(Protocol):
@@ -33,13 +32,13 @@ class Partition(Protocol):
 
 
 @dc.dataclass(frozen=True)
-class UnknownPartition(Partition):
+class SimplePartition(Partition):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     
     def __str__(self) -> str:
-        return "UnknownPartition(\n  " \
+        return "SimplePartition(\n  " \
             f"start='{self.start}',\n  " \
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n" \
@@ -50,32 +49,34 @@ class UnknownPartition(Partition):
 class LockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
-    provider: Provider
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
         return "LockedPartition(\n  " \
-            f"provider='{self.provider}',\n  " \
             f"start='{self.start}',\n  " \
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n  " \
             f"locked_at='{self.locked_at}',\n" \
         ")"
+    
+    def __eq__(self, obj: object) -> bool:
+        if not isinstance(obj, LockedPartition):
+            return False
+        
+        return hash(self.start + self.end) == hash(obj.start + obj.end)
 
 
 @dc.dataclass(frozen=True)
 class UnlockedPartition(LockedPartition):
     start: dt.datetime
     end: dt.datetime
-    provider: Provider
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
     unlocked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
         return "UnlockedPartition(\n  " \
-            f"provider='{self.provider}',\n  " \
             f"start='{self.start}',\n  " \
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n  " \

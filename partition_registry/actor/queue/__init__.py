@@ -1,1 +1,0 @@
-from partition_registry.actor.queue.main import MainQueue

@@ -1,11 +1,11 @@
-import os
 from collections import defaultdict
 from contextlib import closing
 
+# ORM
 from sqlalchemy.orm.session import Session
+from partition_registry.orm import PartitionRegistryORM
 
-from partition_registry.actor.registry.partition.orm import PartitionRegistryORM
-from partition_registry.data.queue import Queue
+# Models
 from partition_registry.data.provider import Provider
 from partition_registry.data.partition import LockedPartition
 from partition_registry.data.partition import UnlockedPartition
@@ -20,20 +20,22 @@ from partition_registry.data.status import FailedPurification
 
 
 
-class MainQueue(Queue):
+class MainQueue:
     def __init__(
         self,
         persist_size: int,
         table: type[PartitionRegistryORM],
-        session: Session, # TODO: check article about threadsafe: "See session_faq_threadsafe for background."
+        # session: Session, # TODO: check article about threadsafe: "See session_faq_threadsafe for background."
     ) -> None:
-        self.session = session
+        # self.session = session
         self.persist_size = persist_size
         restored_queue: dict[Provider, set[LockedPartition | UnlockedPartition]] = defaultdict(set) # TODO: fill in this queue by some local ministorage
-        self._create_local_cache_file_if_not_exists()
         self.records: dict[Provider, set[LockedPartition | UnlockedPartition]] = restored_queue or defaultdict(set)  # TODO: think about separate class for restored queues
 
-    def put(self, partition: LockedPartition | UnlockedPartition) -> SuccededOnAddToQueueStatus | FailedOnAddToQueueStatus:
+    def put(
+        self,
+        partition: LockedPartition | UnlockedPartition
+    ) -> SuccededOnAddToQueueStatus | FailedOnAddToQueueStatus:
         match partition:
             case LockedPartition():
                 self.records[partition.provider].add(partition)
@@ -76,7 +78,6 @@ class MainQueue(Queue):
             return FailedPurification(f"Failed purification: {e}")
         
         return SuccededPurification()
-    
 
     def persist(self) -> SuccededPersist | FailedPersist:
         db_objects: list[PartitionRegistryORM] = [
@@ -93,16 +94,6 @@ class MainQueue(Queue):
         ]
 
         return FailedPersist("DONT FORGET ME")
-
-    def _create_local_cache_file_if_not_exists(self) -> None:
-        if not os.path.exists('./local.cache'):
-            with open('local.cache', 'a+') as f:
-                f.write(';'.join(UnlockedPartition.__dataclass_fields__.keys()) + ';')
-        else:
-            with open('local.cache', 'a+') as f:
-                if not f.readlines():
-                    f.write(';'.join(UnlockedPartition.__dataclass_fields__.keys()) + ';')
-
 
     def persist_locally(self, partition: LockedPartition | UnlockedPartition) -> SuccededPersist | FailedPersist:
         with closing(open('local.cache', 'a+')) as f:
