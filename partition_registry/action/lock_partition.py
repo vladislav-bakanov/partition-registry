@@ -23,9 +23,11 @@ def lock_partition(
     provider_registry: ProviderRegistry,
     source_registry: SourceRegistry,
 ) -> SuccededLock | FailedLock:
+    simple_partition = SimplePartition(start, end)
+    simple_partition.validate()
+
     simple_source = SimpleSource(source_name)
     simple_provider = SimpleProvider(provider_name)
-    simple_partition = SimplePartition(start, end)
 
     registered_source = source_registry.find_registered_source(simple_source)
     if not registered_source:
