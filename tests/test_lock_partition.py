@@ -41,13 +41,12 @@ def test__lock_partition(
     
     assume(start < end)
 
-    provider_registry = ProviderRegistry(MagicMock())
-    partition_registry = PartitionRegistry(MagicMock())
+    provider_registry = ProviderRegistry()
+    partition_registry = PartitionRegistry()
     source_registry: SourceRegistry = MagicMock()
     
     registered_source = RegisteredSource(source_name, partititon_created_at, AccessToken(access_token))
     source_registry.find_registered_source.return_value = registered_source
-    
     response = lock_partition(source_name, provider_name, access_token, start, end, partition_registry, provider_registry, source_registry)
 
     assert isinstance(response, SuccededLock), \

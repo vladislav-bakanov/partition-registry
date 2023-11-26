@@ -1,6 +1,7 @@
 import dataclasses as dc
 import datetime as dt
 from typing import Protocol
+from typing import Self
 from functools import cached_property
 
 import pytz
@@ -44,6 +45,9 @@ class SimplePartition(Partition):
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n" \
         ")"
+    
+    def __hash__(self) -> int:
+        return hash(str(self.start) + str(self.end) + str(self.created_at))
 
 
 @dc.dataclass(frozen=True)
@@ -78,3 +82,12 @@ class UnlockedPartition(LockedPartition):
             f"locked_at='{self.locked_at}',\n  " \
             f"unlocked_at='{self.unlocked_at}'\n" \
         ")"
+
+
+
+def is_intersected(p1: "Partition", p2: "Partition") -> bool:
+    return (
+        p1.start <= p2.start < p1.end or p1.start < p2.end <= p1.end
+        or
+        p2.start <= p1.start < p2.end or p2.start < p1.end <= p2.end
+    )

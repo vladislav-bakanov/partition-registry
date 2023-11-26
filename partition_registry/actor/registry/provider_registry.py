@@ -16,9 +16,8 @@ class ProviderRegistry:
     def __init__(
         self,
         # session: Session,
-        table: type[ProviderRegistryORM]
     ) -> None:
-        self.table = table
+        self.table = ProviderRegistryORM
         # self.session = session
         self.cache: dict[SimpleProvider, RegisteredProvider] = dict()
 

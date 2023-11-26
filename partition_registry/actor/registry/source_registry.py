@@ -20,9 +20,8 @@ class SourceRegistry(Registry[SimpleSource, Status]):
     def __init__(
         self,
         # session: Session,
-        table: type[SourceRegistryORM]
     ) -> None:
-        self.table = table
+        self.table = SourceRegistryORM
         # self.session = session
         self.cache: dict[SimpleSource, RegisteredSource] = dict()
 

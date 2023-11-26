@@ -13,8 +13,7 @@ from partition_registry.action import register_source
 
 @given(source_name=arbitrary_source_name)
 def test__register_source(source_name: str) -> None:
-    table = MagicMock()
-    source_registry = SourceRegistry(table)
+    source_registry = SourceRegistry()
     response = register_source(source_name, source_registry)
 
     assert isinstance(response, SuccededRegistration), \

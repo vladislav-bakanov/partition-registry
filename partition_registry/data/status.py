@@ -83,3 +83,12 @@ class SuccededRegistration(SuccessStatus):
 @dc.dataclass(frozen=True)
 class FailedRegistration(FailedStatus):
     ...
+
+
+@dc.dataclass(frozen=True)
+class NotReadyPartition(FailedStatus): ...
+
+
+@dc.dataclass(frozen=True)
+class ReadyPartition(FailedStatus):
+    ready_partition: UnlockedPartition

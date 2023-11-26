@@ -9,7 +9,6 @@ from tests.arbitrary.provider import arbitrary_provider_name
 from tests.arbitrary.access_token import arbitrary_string_token
 from tests.arbitrary._datetime import arbitrary_datetime
 
-from partition_registry.data.source import SimpleSource
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.partition import LockedPartition
@@ -51,27 +50,30 @@ def test__unlock_partition(
     source_registry.find_registered_source = MagicMock()
     source_registry.find_registered_source.return_value = registered_source
     
-    provider_registry = ProviderRegistry(MagicMock())
-    partition_registry = PartitionRegistry(MagicMock())
+    provider_registry = ProviderRegistry()
+    partition_registry = PartitionRegistry()
     
     token = AccessToken(access_token)
     registered_provider = RegisteredProvider(provider_name, token)
     locked_partition = LockedPartition(start, end, partititon_created_at, partititon_locked_at)
     
-    
-    partition_registry.cache = MagicMock()
-    partition_registry.cache = {(registered_source, registered_provider): {locked_partition, }}
+    partition_registry.locked = MagicMock()
+    partition_registry.locked = {
+        registered_source: {
+            registered_provider: set([locked_partition])
+        }
+    }
     
     response = unlock_partition(source_name, provider_name, access_token, start, end, partition_registry, provider_registry, source_registry)
 
     assert isinstance(response, SuccededUnlock), f"Expected succeded unlock, but got: {response}"
 
-    partition_registry_cache = [obj for obj in partition_registry.cache.get((registered_source, registered_provider))]
+    partition_registry_cache = partition_registry.get_unlocked_partitions_by_source(registered_source)
 
     assert len(partition_registry_cache) == 1, \
         f"Expected only one partition after all operations, got: {partition_registry_cache}"
     
-    assert isinstance(partition_registry_cache[0], UnlockedPartition), \
+    assert isinstance(list(partition_registry_cache)[0], UnlockedPartition), \
         "Expected cache in Partition Registry with object of type UnlockedPartition, but got: " \
         f"{type(partition_registry_cache)}"
 

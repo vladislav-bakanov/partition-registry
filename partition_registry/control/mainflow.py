@@ -35,9 +35,9 @@ app = FastAPI()
 # engine = create_engine('sqlite:///mydatabase.db', echo=True)
 # session = Session(engine)
 
-source_registry = SourceRegistry(SourceRegistryORM)
-provider_registry = ProviderRegistry(ProviderRegistryORM)
-partition_registry = PartitionRegistry(PartitionRegistryORM)
+source_registry = SourceRegistry()
+provider_registry = ProviderRegistry()
+partition_registry = PartitionRegistry()
 
 @app.get("/")
 def read_root() -> dict[str, str | int]:
