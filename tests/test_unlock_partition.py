@@ -1,8 +1,8 @@
 import datetime as dt
+from unittest.mock import MagicMock
 
 from hypothesis import given
 from hypothesis import assume
-from unittest.mock import MagicMock
 
 from tests.arbitrary.source import arbitrary_source_name
 from tests.arbitrary.provider import arbitrary_provider_name
@@ -42,28 +42,26 @@ def test__unlock_partition(
     start: dt.datetime,
     end: dt.datetime
 ) -> None:
-    
     assume(start < end)
 
     source_registry: SourceRegistry = MagicMock()
-    registered_source = RegisteredSource(source_name, partititon_created_at, AccessToken(access_token))
-    source_registry.find_registered_source = MagicMock()
-    source_registry.find_registered_source.return_value = registered_source
-    
+    registered_source = RegisteredSource(source_name, AccessToken(access_token), partititon_created_at)
+    source_registry.find_registered_source = MagicMock(return_value = registered_source)
+
     provider_registry = ProviderRegistry()
     partition_registry = PartitionRegistry()
-    
+
     token = AccessToken(access_token)
     registered_provider = RegisteredProvider(provider_name, token)
     locked_partition = LockedPartition(start, end, partititon_created_at, partititon_locked_at)
-    
+
     partition_registry.locked = MagicMock()
     partition_registry.locked = {
         registered_source: {
             registered_provider: set([locked_partition])
         }
     }
-    
+
     response = unlock_partition(source_name, provider_name, access_token, start, end, partition_registry, provider_registry, source_registry)
 
     assert isinstance(response, SuccededUnlock), f"Expected succeded unlock, but got: {response}"
@@ -72,7 +70,7 @@ def test__unlock_partition(
 
     assert len(partition_registry_cache) == 1, \
         f"Expected only one partition after all operations, got: {partition_registry_cache}"
-    
+
     assert isinstance(list(partition_registry_cache)[0], UnlockedPartition), \
         "Expected cache in Partition Registry with object of type UnlockedPartition, but got: " \
         f"{type(partition_registry_cache)}"

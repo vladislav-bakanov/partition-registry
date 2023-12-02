@@ -1,3 +1,5 @@
+"Provider generative properties"
+
 import hypothesis.strategies as st
 from partition_registry.data.provider import SimpleProvider
 from partition_registry.data.provider import RegisteredProvider

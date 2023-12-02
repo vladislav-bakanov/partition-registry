@@ -1,5 +1,4 @@
 from hypothesis import given
-from unittest.mock import MagicMock
 
 from tests.arbitrary.source import arbitrary_source_name
 
@@ -17,6 +16,7 @@ def test__register_source(source_name: str) -> None:
     response = register_source(source_name, source_registry)
 
     assert isinstance(response, SuccededRegistration), \
-        f"Expected, that registration is succeded by the specified source"
+        "Expected, that registration is succeded by the specified source"
+
     assert source_registry.cache.get(SimpleSource(source_name)) == response.registered_object, \
-        f"Expected, that object has been successfully added into the cache"
+        "Expected, that object has been successfully added into the cache"
