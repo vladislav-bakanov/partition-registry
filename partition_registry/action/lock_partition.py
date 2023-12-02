@@ -27,6 +27,8 @@ def lock_partition(
     simple_partition.validate()
 
     simple_source = SimpleSource(source_name)
+    simple_source.validate()
+
     simple_provider = SimpleProvider(provider_name)
 
     registered_source = source_registry.find_registered_source(simple_source)

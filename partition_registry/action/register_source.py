@@ -9,7 +9,10 @@ def register_source(
     source_name: str,
     source_registry: SourceRegistry
 ) -> SuccededRegistration | FailedRegistration:
+    """Register source within the Source Registry"""
     simple_source = SimpleSource(source_name)
+    simple_source.validate()
+
     registered_source = source_registry.register(simple_source)
     match registered_source:
         case RegisteredSource():
