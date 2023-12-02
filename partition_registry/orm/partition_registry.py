@@ -1,23 +1,25 @@
-from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import TIMESTAMP
-from sqlalchemy import Boolean
+import datetime as dt
 
-from sqlalchemy import func
+from sqlalchemy import TEXT
+from sqlalchemy import DATETIME
+from sqlalchemy import BOOLEAN
+from sqlalchemy import INTEGER
 
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
-Base = declarative_base()
+
+class Base(DeclarativeBase): ...
 
 
-class PartitionRegistry(Base):  # type: ignore
-    __tablename__ = 'partition_registry_v2'
+class PartitionRegistryORM(Base):
+    __tablename__ = "partition_registry"
 
-    id = Column("id", Integer, primary_key=True, nullable=False, autoincrement=True, doc="Event ID")
-    source_id = Column("source_id", Integer, nullable=False, doc="Source ID from all sources")
-    created_date = Column("created_date", TIMESTAMP, nullable=False, doc="Physical date of creation of this partition in UTC", server_default=func.now())
-    is_partition_ready = Column("is_partition_ready", Boolean, nullable=False, doc="Information about partition readiness")
-    provider = Column("provider", String, nullable=False, doc="Provider it's the one who is making operations on this partition")
-    startpoint = Column("startpoint", TIMESTAMP, nullable=False, doc="Start of interval for partition")
-    endpoint = Column("endpoint", TIMESTAMP, nullable=False, doc="End of interval for partition")
+    id: Mapped[int] = mapped_column(INTEGER, primary_key=True)
+    source: Mapped[str] = mapped_column(TEXT, nullable=False)
+    provider: Mapped[str] = mapped_column(TEXT, nullable=False)
+    locked: Mapped[bool] = mapped_column(BOOLEAN, nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=False)
+    locked_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=False)
+    unlocked_at: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=True)
