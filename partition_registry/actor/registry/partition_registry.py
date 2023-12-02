@@ -119,35 +119,4 @@ class PartitionRegistry:
             result.append(current)
 
         return set(result)
-
-
-
-    def is_partition_ready(
-        self,
-        source: RegisteredSource,
-        partition: SimplePartition
-    ) -> bool:
-        source_locked_partitions = self.get_locked_partitions_by_source(source)
-        source_unlocked_partitions = self.get_unlocked_partitions_by_source(source)
-        for lp in source_locked_partitions:
-            if is_intersected(partition, lp):
-                return False
-
-        simplified_unlocked_partitions = [
-            unlocked_partition
-            for unlocked_partition in self.simplify_unlocked(list(source_unlocked_partitions))
-            if is_intersected(partition, unlocked_partition)
-        ]
-        
-        i = 1
-        current_end = simplified_unlocked_partitions[0].end
-        while i < len(simplified_unlocked_partitions):
-            if current_end < simplified_unlocked_partitions[i].start:
-                return False
-            current_end = simplified_unlocked_partitions[i].end
-        
-        if current_end < partition.end:
-            return False
-        
-        return True
                 
