@@ -8,4 +8,5 @@ class AccessToken:
 
     @classmethod
     def generate(cls) -> "AccessToken":
+        """Generates random access token"""
         return cls(str(uuid.uuid4()))

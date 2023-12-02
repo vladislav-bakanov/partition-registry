@@ -20,6 +20,7 @@ class RegistrationResponse(BaseResponse):
     source: RegisteredSource | RegisteredProvider
 
 
+@dc.dataclass(frozen=True)
 @dc.dataclass
 class PartitionLockResponse(BaseResponse):
     status_code: HTTPStatus
@@ -27,3 +28,18 @@ class PartitionLockResponse(BaseResponse):
     source: SimpleSource
     provider: SimpleProvider
     partition: LockedPartition
+
+
+@dc.dataclass(frozen=True)
+class PartitionReadyResponse(BaseResponse):
+    status_code: HTTPStatus
+    message: str
+    source: SimpleSource
+    is_ready: bool = dc.field(init=False, default=True)
+
+@dc.dataclass(frozen=True)
+class PartitionNotReadyResponse(BaseResponse):
+    status_code: HTTPStatus
+    message: str
+    source: SimpleSource
+    is_ready: bool = dc.field(init=False, default=False)

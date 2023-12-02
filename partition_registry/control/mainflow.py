@@ -8,10 +8,6 @@ from fastapi import HTTPException
 # from sqlalchemy import create_engine
 # from sqlalchemy.orm import Session
 
-from partition_registry.orm import SourceRegistryORM
-from partition_registry.orm import PartitionRegistryORM
-from partition_registry.orm import ProviderRegistryORM
-
 from partition_registry import action
 
 from partition_registry.actor.registry import SourceRegistry
@@ -28,6 +24,8 @@ from partition_registry.data.status import SuccededLock
 
 from partition_registry.data.response import RegistrationResponse
 from partition_registry.data.response import PartitionLockResponse
+from partition_registry.data.response import PartitionReadyResponse
+from partition_registry.data.response import PartitionNotReadyResponse
 
 
 app = FastAPI()
@@ -90,3 +88,38 @@ def lock_partition(
                 provider=SimpleProvider(provider_name),
                 partition=response.locked_object
             ).__dict__
+
+
+@app.post("/sources/{source_name}/is_ready")
+def is_partition_ready(
+    source_name: str,
+    partition_start: dt.datetime,
+    partition_end: dt.datetime
+) -> dict[str, Any]:
+
+    response = action.is_partition_ready(
+        source_name,
+        partition_start,
+        partition_end,
+        source_registry,
+        partition_registry
+    )
+
+    if response is True:
+        return PartitionReadyResponse(
+            status_code=HTTPStatus.OK,
+            message="Partition is ready...",
+            source=SimpleSource(source_name),
+        ).__dict__
+
+    if response is False:
+        return PartitionNotReadyResponse(
+            status_code=HTTPStatus.EXPECTATION_FAILED,
+            message="Partition is not ready...",
+            source=SimpleSource(source_name)
+        ).__dict__
+
+    return HTTPException(
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        f"Got unappropriate response: {type(response)}|{response}, contact the support team..."
+    ).__dict__

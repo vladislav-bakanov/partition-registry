@@ -1,7 +1,7 @@
 import dataclasses as dc
 import datetime as dt
 from typing import Protocol
-from typing import Self
+
 from functools import cached_property
 
 import pytz
@@ -10,7 +10,7 @@ import pytz
 class Partition(Protocol):
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
+    created_at: dt.datetime
 
     @cached_property
     def size(self) -> float:
@@ -18,10 +18,15 @@ class Partition(Protocol):
         return (self.end - self.start).total_seconds()
 
     def validate(self) -> None:
+        """Validate partition properties
+        Raises:
+            ValueError(): in case if partition has the same start and the end
+            ValueError(): in case if partition has end erlier than the end
+        """
         if self.start == self.end:
             raise ValueError("Partition start and end should be different")
         if self.size < 0:
-            raise ValueError("Partition start should be earlier than partition end")  # TODO: prepare more explicit error type
+            raise ValueError("Partition start should be earlier than partition end")
 
     def __str__(self) -> str:
         ...
@@ -45,7 +50,7 @@ class SimplePartition(Partition):
             f"end='{self.end}',\n  " \
             f"created_at='{self.created_at}',\n" \
         ")"
-    
+
     def __hash__(self) -> int:
         return hash(str(self.start) + str(self.end) + str(self.created_at))
 
@@ -84,8 +89,13 @@ class UnlockedPartition(LockedPartition):
         ")"
 
 
-
 def is_intersected(p1: "Partition", p2: "Partition") -> bool:
+    """
+    Check that 2 partitions intersect.
+    The order of partitions to check doesn't matter (see ./tests/tests_intersections for more details)
+    p1 (Partition) - partition #1 to check
+    p2 (Partition) - partition #2 to check
+    """
     return (
         p1.start <= p2.start < p1.end or p1.start < p2.end <= p1.end
         or

@@ -1,6 +1,9 @@
-from typing import Protocol
-import dataclasses as dc
 import datetime as dt
+import dataclasses as dc
+from typing import Protocol
+
+import pytz
+
 from partition_registry.data.access_token import AccessToken
 
 
@@ -8,9 +11,17 @@ class Source(Protocol):
     name: str
 
     def validate(self) -> None:
-        for c in self.name:
-            if not c.strip():
-                raise ValueError("Expected that source name doesn't contain spaces...")
+        """
+        Validate source.
+        Expected, that:
+        - Source should have a non-empty name.
+            Raises: ValueError()
+        """
+        if not self.name:
+            raise ValueError("Source name shouldn't be empty...")
+        for char in self.name:
+            if not char.strip():
+                raise ValueError("Source name shouldn't contain any spaces...")
 
     def __str__(self) -> str:
         ...
@@ -30,8 +41,8 @@ class SimpleSource(Source):
 @dc.dataclass(frozen=True)
 class RegisteredSource(Source):
     name: str
-    registered_at: dt.datetime
     access_token: AccessToken
+    registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return f"RegisteredSource(name={self.name}, registered_at={self.registered_at}, access_token={self.access_token})"
+        return f"RegisteredSource(name={self.name}, access_token={self.access_token}), registered_at={self.registered_at}"
