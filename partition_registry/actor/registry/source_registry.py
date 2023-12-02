@@ -30,7 +30,7 @@ class SourceRegistry(Registry[SimpleSource, Status]):
             return FailedRegistration("Source already registered... Ask for access_token from source owner")
 
         access_token = AccessToken(str(uuid.uuid4()))
-        self.cache[source] = RegisteredSource(source.name, dt.datetime.now(pytz.UTC), access_token)
+        self.cache[source] = RegisteredSource(source.name, access_token)
         return self.cache[source]
     
     def safe_register(self, source: SimpleSource) -> RegisteredSource:
@@ -38,7 +38,7 @@ class SourceRegistry(Registry[SimpleSource, Status]):
             self.cache[source]
 
         access_token = AccessToken(str(uuid.uuid4()))
-        self.cache[source] = RegisteredSource(source.name, dt.datetime.now(pytz.UTC), access_token)
+        self.cache[source] = RegisteredSource(source.name, access_token)
         return self.cache[source]
 
     def is_registered(self, source: SimpleSource) -> bool:
