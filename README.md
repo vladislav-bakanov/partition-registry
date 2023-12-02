@@ -31,3 +31,7 @@ This module allows you to do 3 things:
 # Features
 - Source can be registered only once and should be registered via `/sources/register`. After the registration you will get `access_token` in a response.
 Please store this `access_token` somewhere, because only by this token you can access, lock and unlock it.
+
+
+# Take into account:
+For now service works only in-memory (because it's just a POC), but i'm driving this project into stable service state.
