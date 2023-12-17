@@ -1,6 +1,7 @@
 import datetime as dt
 import dataclasses as dc
 from typing import Protocol
+from typing import Self
 
 import pytz
 

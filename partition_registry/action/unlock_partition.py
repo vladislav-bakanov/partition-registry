@@ -52,21 +52,20 @@ def unlock_partition(
     simple_source.validate()
 
     simple_provider = SimpleProvider(provider_name)
-    token = AccessToken(access_token)
 
-    registered_source = source_registry.find_registered_source(simple_source)
+    registered_source = source_registry.safe_register(simple_source)
     if not registered_source:
         return FailedUnlock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
 
-    registered_provider = provider_registry.safe_register(simple_provider, token)
-    if registered_provider.access_token != registered_source.access_token:
+    token = AccessToken(access_token)
+    if token != registered_source.access_token:
         msg = f"{registered_provider} has no access to the {simple_source}... Please, be sure that you use proper access key for the source..."
         return FailedUnlock(msg)
 
+    registered_provider = provider_registry.safe_register(simple_provider, token)
+
     match partition_registry.unlock(registered_source, registered_provider, simple_partition):
-        case FailedUnlock() as failed_unlock:
-            return failed_unlock
         case UnlockedPartition() as unlocked_partition:
             return SuccededUnlock(unlocked_partition, f"{simple_partition} has been successfully locked...")
-        case unknown_return_type:
-            raise TypeError(f"Unexpected return type: {unknown_return_type}")
+        case FailedUnlock() as failed_unlock:
+            return failed_unlock

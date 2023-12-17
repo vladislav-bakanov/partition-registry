@@ -31,7 +31,7 @@ def lock_partition(
 
     simple_provider = SimpleProvider(provider_name)
 
-    registered_source = source_registry.find_registered_source(simple_source)
+    registered_source = source_registry.safe_register(simple_source)
     if not registered_source:
         return FailedLock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
 

@@ -1,5 +1,9 @@
-from typing import Protocol
 import dataclasses as dc
+import datetime as dt
+import pytz
+
+from typing import Protocol
+
 from partition_registry.data.access_token import AccessToken
 
 class Provider(Protocol):
@@ -25,6 +29,7 @@ class SimpleProvider(Provider):
 class RegisteredProvider(Provider):
     name: str
     access_token: AccessToken
+    registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return f"RegisteredProvider(name={self.name}, access_token={self.access_token})"
+        return f"RegisteredProvider(name={self.name}, access_token={self.access_token}, registered_at={self.registered_at})"
