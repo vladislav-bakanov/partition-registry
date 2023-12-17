@@ -137,10 +137,6 @@ def unlock_partition(
             ).__dict__
 
 
-# if __name__ == '__main__':
-#     uvicorn.run(app, host='0.0.0.0', port=8000)
-
-
 # @app.post("/sources/{source_name}/is_ready")
 # def is_partition_ready(
 #     source_name: str,

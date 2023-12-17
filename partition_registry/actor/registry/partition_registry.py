@@ -82,7 +82,6 @@ class PartitionRegistry:
         provider: RegisteredProvider,
         partition: LockedPartition | UnlockedPartition,
     ) -> None:
-        breakpoint()
         match partition:
             case LockedPartition() as locked_partition:
                 redis_lock_key = (
@@ -115,18 +114,20 @@ class PartitionRegistry:
         provider: RegisteredProvider,
         partition: LockedPartition | UnlockedPartition
     ) -> None:
+        breakpoint()
         match partition:
-            case LockedPartition():
-                redis_lock_key = (
+            case LockedPartition() as locked_partition:
+                key = (
                     f"{self.redis_path}:{source.name}:{provider.name}:locked:"
-                    f"{generate_unixtime(partition.start)}-{generate_unixtime(partition.end)}"
+                    f"{generate_unixtime(locked_partition.start)}-{generate_unixtime(locked_partition.end)}"
                 )
-            case UnlockedPartition():
-                redis_lock_key = (
+            case UnlockedPartition() as unlocked_partition:
+                key = (
                     f"{self.redis_path}:{source.name}:{provider.name}:unlocked:"
-                    f"{generate_unixtime(partition.start)}-{generate_unixtime(partition.end)}"
+                    f"{generate_unixtime(unlocked_partition.start)}-{generate_unixtime(unlocked_partition.end)}"
                 )
-        self.redis.hdel(redis_lock_key)
+        if self.redis.delete(key) != 1:
+            raise ValueError(f"Coudln't delete data from Redis by key: {key}")
 
     def safe_remove_from_memory(
         self,
@@ -178,11 +179,10 @@ class PartitionRegistry:
             return FailedUnlock(f"{partition} was not found among locked...")
 
         unlocked_partition = UnlockedPartition.parse(locked_partition)
-        breakpoint()
         self.safe_add_into_redis(source, provider, unlocked_partition)
         self.safe_add_into_memory_cache(source, provider, unlocked_partition)
-        self.safe_remove_from_memory(source, provider, partition)
-        self.safe_remove_from_redis(source, provider, partition)
+        self.safe_remove_from_memory(source, provider, locked_partition)
+        self.safe_remove_from_redis(source, provider, locked_partition)
         return unlocked_partition
 
     def is_partition_locked(

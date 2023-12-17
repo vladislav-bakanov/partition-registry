@@ -58,7 +58,7 @@ class SimplePartition(Partition):
 
 
 @dc.dataclass(frozen=True)
-class LockedPartition(SimplePartition):
+class LockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
@@ -78,7 +78,7 @@ class LockedPartition(SimplePartition):
 
 
 @dc.dataclass(frozen=True)
-class UnlockedPartition(LockedPartition):
+class UnlockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
