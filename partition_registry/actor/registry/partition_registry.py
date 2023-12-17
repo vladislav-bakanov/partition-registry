@@ -114,7 +114,6 @@ class PartitionRegistry:
         provider: RegisteredProvider,
         partition: LockedPartition | UnlockedPartition
     ) -> None:
-        breakpoint()
         match partition:
             case LockedPartition() as locked_partition:
                 key = (
