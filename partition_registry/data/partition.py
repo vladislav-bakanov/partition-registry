@@ -1,6 +1,8 @@
 import dataclasses as dc
 import datetime as dt
+
 from typing import Protocol
+from typing import Self
 
 from functools import cached_property
 
@@ -56,7 +58,7 @@ class SimplePartition(Partition):
 
 
 @dc.dataclass(frozen=True)
-class LockedPartition(Partition):
+class LockedPartition(SimplePartition):
     start: dt.datetime
     end: dt.datetime
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
@@ -69,6 +71,10 @@ class LockedPartition(Partition):
             f"created_at='{self.created_at}',\n  " \
             f"locked_at='{self.locked_at}',\n" \
         ")"
+    
+    @classmethod
+    def parse(cls, obj: SimplePartition) -> Self:
+        return LockedPartition(obj.start, obj.end, obj.created_at)
 
 
 @dc.dataclass(frozen=True)
@@ -87,6 +93,10 @@ class UnlockedPartition(LockedPartition):
             f"locked_at='{self.locked_at}',\n  " \
             f"unlocked_at='{self.unlocked_at}'\n" \
         ")"
+    
+    @classmethod
+    def parse(cls, obj: LockedPartition) -> Self:
+        return UnlockedPartition(obj.start, obj.end, obj.created_at, obj.locked_at)
 
 
 def is_intersected(p1: "Partition", p2: "Partition") -> bool:

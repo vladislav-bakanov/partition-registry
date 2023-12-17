@@ -13,9 +13,5 @@ def register_source(
     simple_source = SimpleSource(source_name)
     simple_source.validate()
 
-    registered_source = source_registry.register(simple_source)
-    match registered_source:
-        case RegisteredSource():
-            return SuccededRegistration(registered_source)
-        case fail_response:
-            return FailedRegistration(fail_response.error_message)
+    registered_source = source_registry.safe_register(simple_source)
+    return SuccededRegistration(registered_source)

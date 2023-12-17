@@ -9,6 +9,7 @@ from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.source import SimpleSource
 from partition_registry.data.provider import SimpleProvider
 from partition_registry.data.partition import LockedPartition
+from partition_registry.data.partition import UnlockedPartition
 
 class BaseResponse(Protocol):
     status_code: HTTPStatus
@@ -21,13 +22,21 @@ class RegistrationResponse(BaseResponse):
 
 
 @dc.dataclass(frozen=True)
-@dc.dataclass
 class PartitionLockResponse(BaseResponse):
     status_code: HTTPStatus
     message: str
     source: SimpleSource
     provider: SimpleProvider
     partition: LockedPartition
+
+
+@dc.dataclass(frozen=True)
+class PartitionUnlockResponse(BaseResponse):
+    status_code: HTTPStatus
+    message: str
+    source: SimpleSource
+    provider: SimpleProvider
+    partition: UnlockedPartition
 
 
 @dc.dataclass(frozen=True)
