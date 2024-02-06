@@ -10,7 +10,7 @@ from partition_registry.data.partition import SimplePartition
 from partition_registry.data.partition import LockedPartition
 from partition_registry.data.partition import UnlockedPartition
 from partition_registry.data.source import RegisteredSource
-from partition_registry.action.is_partition_ready import is_partition_ready
+from partition_registry.actions.is_partition_ready import is_partition_ready
 
 
 def test_partition_readiness_on_empty_partitions() -> None:

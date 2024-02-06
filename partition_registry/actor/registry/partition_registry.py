@@ -1,242 +1,135 @@
-import logging
-from collections import defaultdict
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
-from redis import Redis
+from partition_registry.orm import PartitionsRegistryORM
+from partition_registry.orm import ProvidersRegistryORM
+from partition_registry.orm import SourcesRegistryORM
 
-from partition_registry.orm import PartitionRegistryORM
+from partition_registry.data.registry import Registry
 
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
-from partition_registry.data.partition import LockedPartition
-from partition_registry.data.partition import UnlockedPartition
+from partition_registry.data.partition import RegisteredPartition
+
 from partition_registry.data.partition import SimplePartition
-from partition_registry.data.partition import is_intersected
-from partition_registry.data.func import safe_parse_datetime
-from partition_registry.data.func import generate_unixtime
 
-from partition_registry.data.status import FailedUnlock
-from partition_registry.data.status import SuccededLock
+from partition_registry.data.status import SuccededPersist
+from partition_registry.data.status import FailedPersist
 
 
-class PartitionRegistry:
-    def __init__(
-        self, redis: Redis
-    ) -> None:
-        self.redis = redis
-        self.redis_path = "registry:partition"
-        
-        self.locked_cache: dict[RegisteredSource, dict[RegisteredProvider, set[LockedPartition]]] = defaultdict()
-        self.unlocked_cache: dict[RegisteredSource, dict[RegisteredProvider, set[UnlockedPartition]]] = defaultdict()
+class PartitionRegistry(Registry[SimplePartition, RegisteredPartition]):
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.table = PartitionsRegistryORM
+        self.providers_table = ProvidersRegistryORM
+        self.sources_table = SourcesRegistryORM
+        self.cache: dict[tuple[SimplePartition, RegisteredSource, RegisteredProvider], RegisteredPartition] = dict()
 
-    def memory_lookup_locked(
+    def safe_register(
         self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
         partition: SimplePartition,
-    ) -> LockedPartition | None:
-        source_cache = self.locked_cache.get(source, {}) or {}
-        provider_cache = source_cache.get(provider, set()) or set()
-
-        for locked_partition in provider_cache:
-            if locked_partition.start == partition.start and locked_partition.end == partition.end:
-                return locked_partition
-
-    def redis_lookup_locked(
-        self,
         source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: SimplePartition,
-    ) -> LockedPartition | None:
-        redis_lock_key = (
-            f"{self.redis_path}:{source.name}:{provider.name}:locked:"
-            f"{generate_unixtime(partition.start)}-{generate_unixtime(partition.end)}"
+        provider: RegisteredProvider
+    ) -> RegisteredPartition:
+        match self.lookup_registered(partition, source, provider):
+            case RegisteredPartition() as registered_partition:
+                print("Cache hit...")
+                return registered_partition
+
+        print("Cache miss...")
+        registered_partition = RegisteredPartition(
+            start=partition.start,
+            end=partition.end,
+            source=source,
+            provider=provider,
+            created_at=partition.created_at
         )
-        match self.redis.hscan(redis_lock_key):
-            case int() as cursor, {b'created_at': bytes(created_at_bstring), b'locked_at': bytes(locked_at_bstring)}:
-                created_at = safe_parse_datetime(created_at_bstring)
-                locked_at = safe_parse_datetime(locked_at_bstring)
-                return LockedPartition(partition.start, partition.end, created_at, locked_at)
+        match self.persist(registered_partition, source, provider):
+            case SuccededPersist(): ...
+            case fail:
+                # TODO: create specific error for this
+                raise ValueError(fail.error_message)
+        key = (partition, source, provider)
+        self.cache[key] = registered_partition
+        return registered_partition
 
-    def safe_add_into_memory_cache(
+    def lookup_registered(
         self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: LockedPartition | UnlockedPartition,
-    ) -> None:
-        match partition:
-            case LockedPartition() as locked_partition:
-                if source not in self.locked_cache or provider not in self.locked_cache[source]:
-                    self.locked_cache[source] = {provider: {locked_partition, }}
-                else:
-                    self.locked_cache[source][provider].add(locked_partition)
-
-            case UnlockedPartition() as unlocked_partition:
-                if source not in self.unlocked_cache or provider not in self.unlocked_cache[source]:
-                    self.unlocked_cache[source] = {provider: {unlocked_partition, }}
-                else:
-                    self.unlocked_cache[source][provider].add(unlocked_partition)            
-
-    def safe_add_into_redis(
-        self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: LockedPartition | UnlockedPartition,
-    ) -> None:
-        match partition:
-            case LockedPartition() as locked_partition:
-                redis_lock_key = (
-                    f"{self.redis_path}:{source.name}:{provider.name}:locked:"
-                    f"{generate_unixtime(locked_partition.start)}-{generate_unixtime(locked_partition.end)}"
-                )
-                locked_values = {
-                    'created_at': str(locked_partition.created_at),
-                    'locked_at': str(locked_partition.locked_at),
-                }
-                if self.redis.hset(redis_lock_key, mapping=locked_values) != len(locked_values):
-                    raise ValueError(f"Some fields in Redis have not been updated for the key: {redis_lock_key}")
-            
-            case UnlockedPartition() as unlocked_partition:
-                redis_unlock_key = (
-                    f"{self.redis_path}:{source.name}:{provider.name}:unlocked:"
-                    f"{generate_unixtime(unlocked_partition.start)}-{generate_unixtime(unlocked_partition.end)}"
-                )
-                unlocked_values = {
-                    'created_at': str(unlocked_partition.created_at),
-                    'locked_at': str(unlocked_partition.locked_at),
-                    'unlocked_at': str(unlocked_partition.unlocked_at)
-                }
-                if self.redis.hset(redis_unlock_key, mapping=unlocked_values) != len(unlocked_values):
-                    raise ValueError(f"Some fields in Redis have not been updated for the key: {redis_unlock_key}")
-
-    def safe_remove_from_redis(
-        self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: LockedPartition | UnlockedPartition
-    ) -> None:
-        match partition:
-            case LockedPartition() as locked_partition:
-                key = (
-                    f"{self.redis_path}:{source.name}:{provider.name}:locked:"
-                    f"{generate_unixtime(locked_partition.start)}-{generate_unixtime(locked_partition.end)}"
-                )
-            case UnlockedPartition() as unlocked_partition:
-                key = (
-                    f"{self.redis_path}:{source.name}:{provider.name}:unlocked:"
-                    f"{generate_unixtime(unlocked_partition.start)}-{generate_unixtime(unlocked_partition.end)}"
-                )
-        if self.redis.delete(key) != 1:
-            raise ValueError(f"Coudln't delete data from Redis by key: {key}")
-
-    def safe_remove_from_memory(
-        self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: LockedPartition | UnlockedPartition
-    ) -> None:
-        match partition:
-            case LockedPartition() as locked_partition:
-                if source in self.locked_cache and provider in self.locked_cache[source]:
-                    self.locked_cache[source][provider].remove(locked_partition)
-            case UnlockedPartition() as unlocked_partition:
-                if source in self.unlocked_cache and provider in self.unlocked_cache[source]:
-                    self.unlocked_cache[source][provider].remove(unlocked_partition)
-
-    def lock(
-        self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: SimplePartition
-    ) -> LockedPartition:
-        match self.memory_lookup_locked:
-            case LockedPartition() as locked_partition:
-                return locked_partition
-
-        match self.redis_lookup_locked(source, provider, partition):
-            case LockedPartition() as locked_partition:
-                self.safe_add_into_memory_cache(source, provider, locked_partition)
-                return locked_partition
-
-        locked_partition = LockedPartition.parse(partition)
-        self.safe_add_into_redis(source, provider, locked_partition)
-        self.safe_add_into_memory_cache(source, provider, locked_partition)
-        return locked_partition
-
-    def unlock(
-        self,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
         partition: SimplePartition,
-    ) -> UnlockedPartition | FailedUnlock:
-        locked_partition = (
-            self.memory_lookup_locked(source, provider, partition)
-            or
-            self.redis_lookup_locked(source, provider, partition)
-        )
-
-        if locked_partition is None:
-            return FailedUnlock(f"{partition} was not found among locked...")
-
-        unlocked_partition = UnlockedPartition.parse(locked_partition)
-        self.safe_add_into_redis(source, provider, unlocked_partition)
-        self.safe_add_into_memory_cache(source, provider, unlocked_partition)
-        self.safe_remove_from_memory(source, provider, locked_partition)
-        self.safe_remove_from_redis(source, provider, locked_partition)
-        return unlocked_partition
-
-    def is_partition_locked(
-        self,
         source: RegisteredSource,
-        provider: RegisteredProvider,
-        partition: SimplePartition,
-    ) -> bool:
-        return (
-            self.memory_lookup_locked(source, provider, partition) is not None
-            or
-            self.redis_lookup_locked(source, provider, partition) is not None
-        )
-
-    # TODO: REMASTER!!!
-    def get_locked_partitions_by_source(self, source: RegisteredSource) -> set[LockedPartition]:
-        return {
-            locked_partition
-            for _, locked_partitions in self.locked.get(source, {}).items()
-            for locked_partition in locked_partitions
-        }
+        provider: RegisteredProvider
+    ) -> RegisteredPartition | None:
+        return self.memory_lookup(partition, source, provider) or self.db_lookup(partition, source, provider)
     
-    # TODO: REMASTER!!!
-    def get_unlocked_partitions_by_source(self, source: RegisteredSource) -> set[UnlockedPartition]:
-        return {
-            unlocked_partition
-            for _, unlocked_partitions in self.unlocked.get(source, {}).items()
-            for unlocked_partition in unlocked_partitions
-        }
-
-    def simplify_unlocked(
+    def memory_lookup(
         self,
-        partitions: list[UnlockedPartition]
-    ) -> set[SimplePartition]:
-        """Union all intersected partitions in one set to iterate quicker over it"""
-        result: list[SimplePartition] = []
-        partitions.sort(key=lambda x: x.start)
-        if len(partitions) == 0:
-            return set()
+        partition: SimplePartition,
+        source: RegisteredSource,
+        provider: RegisteredProvider,
+    ) -> RegisteredPartition | None:
+        key = (partition, source, provider)
+        return self.cache.get(key)
+    
+    def db_lookup(
+        self,
+        partition: SimplePartition,
+        source: RegisteredSource,
+        provider: RegisteredProvider
+    ) -> RegisteredPartition | None:
+        session = self.session
+        rows = (
+            session
+            .query(self.table)
+            .join(self.sources_table, self.table.source_id == self.sources_table.id)
+            .join(self.providers_table, self.table.provider_id == self.providers_table.id)
+            .filter(self.sources_table.name == source.name)
+            .filter(self.providers_table.name == provider.name)
+            .filter(self.table.start == partition.start)
+            .filter(self.table.end == partition.end)
+            .all()
+        )
+        if not rows:
+            return None
 
-        current = SimplePartition(partitions[0].start, partitions[0].end)
-        for partition in partitions[1:]:
-            if is_intersected(partition, current):
-                start, end = current.start, max(partition.end, current.end)
-            else:
-                start, end = partition.start, partition.end
-                result.append(current)
+        for row in rows:
+            return RegisteredPartition(row.start, row.end, source, provider, row.created_at, row.registered_at)
 
-            current = SimplePartition(start, end)
+    def persist(
+        self,
+        partition: RegisteredPartition,
+        source: RegisteredSource,
+        provider: RegisteredProvider,
+    ) -> SuccededPersist | FailedPersist:
+        session = self.session
+        source_id = (
+            session
+            .query(self.sources_table.id)
+            .filter(self.sources_table.name == source.name)
+            .one_or_none()
+        )
+        if not source_id:
+            return FailedPersist(f"Persist failed. Source <<{source.name}>> not found among registered sources. Please, be sure your source registered...")
         
-        if len(result) == 0:
-            return {current, }
-        
-        if result[-1] != current:
-            result.append(current)
+        provider_id = (
+            session
+            .query(self.providers_table.id)
+            .filter(self.providers_table.name == provider.name)
+            .one_or_none()
+        )
+        if not provider_id:
+            return FailedPersist(f"Persist failed. Provider <<{provider.name}>> not found among registered provider. Please, be sure your provider registered...")
 
-        return set(result)
-                
+        record = PartitionsRegistryORM(
+            start=partition.start,
+            end=partition.end,
+            source_id=source_id[0],
+            provider_id=provider_id[0],
+            created_at=partition.created_at
+        )
+        try:
+            session.add(record)
+        except Exception as e:
+            return FailedPersist(f"Persist failed with error: {e}")
+        else:
+            session.commit()
+        return SuccededPersist()

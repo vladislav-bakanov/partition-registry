@@ -1,59 +1,73 @@
-from redis import Redis
+import logging
 
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+from partition_registry.orm import SourcesRegistryORM
 
 from partition_registry.data.registry import Registry
 from partition_registry.data.access_token import AccessToken
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.source import SimpleSource
-from partition_registry.data.func import safe_parse_datetime
+from partition_registry.data.status import SuccededPersist
+from partition_registry.data.status import FailedPersist
 
 
 class SourceRegistry(Registry[SimpleSource, RegisteredSource]):
-    def __init__(self, redis: Redis) -> None:
-        self.redis = redis
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.table = SourcesRegistryORM
         self.cache: dict[SimpleSource, RegisteredSource] = dict()
-        self.redis_path = 'registry:source'
 
-    def register(self, source: SimpleSource) -> RegisteredSource:
-        return self.safe_register(source)
+    def safe_register(self, source: SimpleSource, owner: str) -> RegisteredSource:
+        match self.lookup_registered(source):
+            case RegisteredSource() as registered_source:
+                return registered_source
 
-    def safe_register(self, source: SimpleSource) -> RegisteredSource:
-        if self.is_registered(source):
-            return self.source_memory_lookup(source) or self.source_redis_lookup(source)
-
-        registered_source = RegisteredSource(source.name, AccessToken.generate())
-
-        added_records = self.redis.hset(
-            f"{self.redis_path}:{source.name}",
-            mapping={
-                'access_token': registered_source.access_token.token,
-                'registered_at': str(registered_source.registered_at),
-            }
-        )
-
-        # We add 2 keys and expect to receive 2 as well as a result of Redis insertion
-        if added_records != 2:
-            raise ValueError(f"Couldn't added source {registered_source} into Redis cache...")
+        registered_source = RegisteredSource(source.name, AccessToken.generate(), owner)
+        match self.persist(registered_source):
+            case SuccededPersist(): ...
+            case fail:
+                raise ValueError(fail.error_message)
 
         self.cache[source] = registered_source
         return registered_source
-
+    
+    def lookup_registered(self, source: SimpleSource) -> RegisteredSource | None:
+        return self.memory_lookup(source) or self.db_lookup(source)
+    
     def is_registered(self, source: SimpleSource) -> bool:
-        return self.source_memory_lookup(source) is not None or self.source_redis_lookup(source) is not None
+        return isinstance(self.lookup_registered(source), RegisteredSource)
 
-    def source_memory_lookup(self, source: SimpleSource) -> RegisteredSource | None:
+    def memory_lookup(self, source: SimpleSource) -> RegisteredSource | None:
         return self.cache.get(source)
 
-    def source_redis_lookup(self, source: SimpleSource) -> RegisteredSource | None:
-        match self.redis.hscan(f"{self.redis_path}:{source.name}"):
-            case _, {
-                b'access_token': bytes(access_token_bstring),
-                b'registered_at': bytes(registered_at_bstring)
-            }:
-                registered_at = safe_parse_datetime(registered_at_bstring)
-                access_token = AccessToken(access_token_bstring.decode('utf-8'))
+    def db_lookup(self, source: SimpleSource) -> RegisteredSource | None:
+        rows = (
+            self.session
+            .query(self.table)
+            .filter(self.table.name == source.name)
+            .all()
+        )
+        if not rows:
+            return None
 
-                if not registered_at:
-                    raise ValueError(f"{registered_at_bstring}, Registration timestamp didn't find in Redis for the {source}...")
-
-                return RegisteredSource(source.name, access_token, registered_at)
+        for row in rows:
+            token = AccessToken(row.access_key)
+            return RegisteredSource(row.name, token, row.owner, row.registered_at)
+    
+    def persist(self, source: RegisteredSource) -> SuccededPersist | FailedPersist:
+        record = SourcesRegistryORM(
+            name=source.name,
+            owner=source.owner,
+            access_key=source.access_token.token
+        )
+        session = self.session
+        try:
+            session.add(record)
+        except Exception as e:
+            return FailedPersist(f"Persist failed with error: {e}")
+        else:
+            session.commit()
+        return SuccededPersist()

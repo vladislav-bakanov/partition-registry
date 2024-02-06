@@ -161,3 +161,4 @@ cython_debug/
 .DS_Store
 poetry.lock
 .envrc.local
+.vscode/settings.json

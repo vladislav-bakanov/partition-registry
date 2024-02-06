@@ -6,6 +6,9 @@ from typing import Self
 
 from functools import cached_property
 
+from partition_registry.data.provider import RegisteredProvider
+from partition_registry.data.source import RegisteredSource
+
 import pytz
 
 
@@ -36,9 +39,6 @@ class Partition(Protocol):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __hash__(self) -> int:
-        return hash(str(self.start) + str(self.end))
-
 
 @dc.dataclass(frozen=True)
 class SimplePartition(Partition):
@@ -47,56 +47,84 @@ class SimplePartition(Partition):
     created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return "SimplePartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n" \
-        ")"
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}', "
+            f"created_at='{self.created_at}'"
+            ")"
+        )
 
-    def __hash__(self) -> int:
-        return hash(str(self.start) + str(self.end) + str(self.created_at))
+
+@dc.dataclass(frozen=True)
+class RegisteredPartition(Partition):
+    start: dt.datetime
+    end: dt.datetime
+    source: RegisteredSource
+    provider: RegisteredProvider
+    created_at: dt.datetime
+    registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
+
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}', "
+            f"source='{self.source}', "
+            f"provider='{self.provider}', "
+            f"created_at='{self.created_at}', "
+            f"registered_at='{self.registered_at}'"
+            ")"
+        )
 
 
 @dc.dataclass(frozen=True)
 class LockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
+    source: RegisteredSource
+    provider: RegisteredProvider
+    created_at: dt.datetime
+    registered_at: dt.datetime
     locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return "LockedPartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n  " \
-            f"locked_at='{self.locked_at}',\n" \
-        ")"
-    
-    @classmethod
-    def parse(cls, obj: SimplePartition) -> Self:
-        return LockedPartition(obj.start, obj.end, obj.created_at)
-
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}', "
+            f"source='{self.source}', "
+            f"provider='{self.provider}', "
+            f"created_at='{self.created_at}', "
+            f"registered_at='{self.registered_at}', "
+            f"locked_at='{self.locked_at}'"
+            ")"
+        )
 
 @dc.dataclass(frozen=True)
 class UnlockedPartition(Partition):
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
+    source: RegisteredSource
+    provider: RegisteredProvider
+    created_at: dt.datetime
+    registered_at: dt.datetime
+    locked_at: dt.datetime
     unlocked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return "UnlockedPartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n  " \
-            f"locked_at='{self.locked_at}',\n  " \
-            f"unlocked_at='{self.unlocked_at}'\n" \
-        ")"
-    
-    @classmethod
-    def parse(cls, obj: LockedPartition) -> Self:
-        return UnlockedPartition(obj.start, obj.end, obj.created_at, obj.locked_at)
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}', "
+            f"source='{self.source}', "
+            f"provider='{self.provider}', "
+            f"created_at='{self.created_at}', "
+            f"registered_at='{self.registered_at}', "
+            f"locked_at='{self.locked_at}', "
+            f"unlocked_at='{self.unlocked_at}'"
+            ")"
+        )
 
 
 def is_intersected(p1: "Partition", p2: "Partition") -> bool:
@@ -106,8 +134,6 @@ def is_intersected(p1: "Partition", p2: "Partition") -> bool:
     p1 (Partition) - partition #1 to check
     p2 (Partition) - partition #2 to check
     """
-    return (
-        p1.start <= p2.start < p1.end or p1.start < p2.end <= p1.end
-        or
-        p2.start <= p1.start < p2.end or p2.start < p1.end <= p2.end
-    )
+    left = p1 if p1.start <= p2.start else p2
+    right = p2 if p1.start <= p2.start else p1
+    return left.start <= right.start < left.end or left.start < right.end <= left.end

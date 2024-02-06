@@ -2,19 +2,24 @@ import dataclasses as dc
 
 from typing import Protocol
 from typing import Optional
-
-from partition_registry.data.partition import UnlockedPartition
-from partition_registry.data.partition import LockedPartition
-from partition_registry.data.source import RegisteredSource
-from partition_registry.data.provider import RegisteredProvider
+from typing import TYPE_CHECKING
 
 
+if TYPE_CHECKING:
+    from partition_registry.data.partition import UnlockedPartition
+    from partition_registry.data.partition import LockedPartition
+    from partition_registry.data.source import RegisteredSource
+    from partition_registry.data.provider import RegisteredProvider
+    from partition_registry.data.partition import RegisteredPartition
+
+
+@dc.dataclass(frozen=True)
 class Status(Protocol):
     ...
 
 
 @dc.dataclass(frozen=True)
-class SuccessStatus(Status):
+class SuccessStatus(Protocol):
     ...
 
 
@@ -24,49 +29,34 @@ class FailedStatus(Status):
 
 
 @dc.dataclass(frozen=True)
-class SuccededOnAddToQueueStatus(SuccessStatus):
-    ...
+class SuccededOnAddToQueueStatus(SuccessStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class FailedOnAddToQueueStatus(FailedStatus):
-    ...
+class FailedOnAddToQueueStatus(FailedStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class SuccededPersist(SuccessStatus):
-    ...
+class SuccededPersist(SuccessStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class FailedPersist(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class SuccededPurification(SuccessStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class FailedPurification(FailedStatus):
-    ...
+class FailedPersist(FailedStatus): ...
 
 
 @dc.dataclass(frozen=True)
 class SuccededLock(SuccessStatus):
-    locked_object: LockedPartition
+    object: "LockedPartition"
     message: Optional[str] = dc.field(default=None)
 
 
 @dc.dataclass(frozen=True)
-class FailedLock(FailedStatus):
-    ...
+class FailedLock(FailedStatus): ...
 
 
 @dc.dataclass(frozen=True)
 class SuccededUnlock(SuccessStatus):
-    unlocked_object: UnlockedPartition
+    object: "UnlockedPartition"
     message: Optional[str] = dc.field(default=None)
 
 @dc.dataclass(frozen=True)
@@ -76,7 +66,7 @@ class FailedUnlock(FailedStatus):
 
 @dc.dataclass(frozen=True)
 class SuccededRegistration(SuccessStatus):
-    registered_object: RegisteredSource | RegisteredProvider
+    registered_object: "RegisteredSource | RegisteredProvider | RegisteredPartition"
     message: Optional[str] = dc.field(default=None)
 
 
@@ -91,4 +81,14 @@ class NotReadyPartition(FailedStatus): ...
 
 @dc.dataclass(frozen=True)
 class ReadyPartition(FailedStatus):
-    ready_partition: UnlockedPartition
+    ready_partition: "UnlockedPartition"
+
+
+@dc.dataclass(frozen=True)
+class ValidationSucceded(SuccessStatus):
+    ...
+    
+
+@dc.dataclass(frozen=True)
+class ValidationFailed(FailedStatus):
+    ...

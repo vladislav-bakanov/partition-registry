@@ -1,17 +1,19 @@
+from typing import Protocol
+
 import datetime as dt
 import dataclasses as dc
-from typing import Protocol
-from typing import Self
 
 import pytz
 
 from partition_registry.data.access_token import AccessToken
+from partition_registry.data.status import ValidationSucceded
+from partition_registry.data.status import ValidationFailed
 
 
 class Source(Protocol):
     name: str
 
-    def validate(self) -> None:
+    def safe_validate(self) -> ValidationSucceded | ValidationFailed:
         """
         Validate source.
         Expected, that:
@@ -19,13 +21,14 @@ class Source(Protocol):
             Raises: ValueError()
         """
         if not self.name:
-            raise ValueError("Source name shouldn't be empty...")
+            return ValidationFailed("Source name shouldn't be empty...")
         for char in self.name:
             if not char.strip():
-                raise ValueError("Source name shouldn't contain any spaces...")
+                return ValidationFailed("Source name shouldn't contain any spaces...")
 
-    def __str__(self) -> str:
-        ...
+        return ValidationSucceded()
+
+    def __str__(self) -> str: ...
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -36,14 +39,21 @@ class SimpleSource(Source):
     name: str
 
     def __str__(self) -> str:
-        return f"SimpleSource(name={self.name})"
+        return f"{self.__class__.__name__}(name={self.name})"
 
 
 @dc.dataclass(frozen=True)
 class RegisteredSource(Source):
     name: str
-    access_token: AccessToken
+    access_token: AccessToken = dc.field(repr=False)
+    owner: str
     registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return f"RegisteredSource(name={self.name}, access_token={self.access_token}), registered_at={self.registered_at}"
+        return (
+            f"{self.__class__.__name__}("
+            f"name={self.name}, "
+            f"owner={self.owner}"
+            f"registered_at={self.registered_at}"
+            ")"
+        )

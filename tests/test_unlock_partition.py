@@ -21,7 +21,7 @@ from partition_registry.actor.registry import SourceRegistry
 
 from partition_registry.data.status import SuccededUnlock
 
-from partition_registry.action import unlock_partition
+from partition_registry.actions import unlock_partition
 
 
 @given(

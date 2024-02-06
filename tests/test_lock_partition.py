@@ -19,7 +19,7 @@ from partition_registry.actor.registry import PartitionRegistry
 from partition_registry.actor.registry import ProviderRegistry
 from partition_registry.actor.registry import SourceRegistry
 
-from partition_registry.action import lock_partition
+from partition_registry.actions import lock_partition
 
 
 @given(

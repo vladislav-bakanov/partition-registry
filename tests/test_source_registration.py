@@ -7,7 +7,7 @@ from partition_registry.data.status import SuccededRegistration
 
 from partition_registry.actor.registry import SourceRegistry
 
-from partition_registry.action import register_source
+from partition_registry.actions import register_source
 
 
 @given(source_name=arbitrary_source_name)
