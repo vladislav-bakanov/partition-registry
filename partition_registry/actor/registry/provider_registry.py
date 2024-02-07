@@ -15,7 +15,7 @@ from partition_registry.orm import ProvidersRegistryORM
 
 
 class ProviderRegistry(Registry[SimpleProvider, RegisteredProvider]):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: scoped_session[Session]) -> None:
         self.session = session
         self.table = ProvidersRegistryORM
         self.cache: dict[str, RegisteredProvider] = dict()

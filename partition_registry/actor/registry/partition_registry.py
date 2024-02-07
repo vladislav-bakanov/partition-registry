@@ -18,7 +18,7 @@ from partition_registry.data.status import FailedPersist
 
 
 class PartitionRegistry(Registry[SimplePartition, RegisteredPartition]):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: scoped_session[Session]) -> None:
         self.session = session
         self.table = PartitionsRegistryORM
         self.providers_table = ProvidersRegistryORM

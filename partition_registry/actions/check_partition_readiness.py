@@ -1,5 +1,6 @@
 import datetime as dt
-from dateutil import tz
+
+from partition_registry.data.func import localize
 
 from partition_registry.actor.registry import EventsRegistry
 from partition_registry.actor.registry import SourceRegistry
@@ -21,14 +22,7 @@ def check_partition_readiness(
     source_registry: SourceRegistry,
     events_registry: EventsRegistry
 ) -> PartitionReady | PartitionNotReady | FailedRegistration:
-    
-    if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
-        start = start.astimezone(tz.UTC)
-    
-    if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
-        end = end.astimezone(tz.UTC)
-    
-    simple_partition = SimplePartition(start, end)
+
     simple_source = SimpleSource(source_name)
     match source_registry.lookup_registered(simple_source):
         case None:
@@ -38,6 +32,11 @@ def check_partition_readiness(
             )
         case RegisteredSource() as registered_source: ...
     
+    
+    start = localize(start)
+    end = localize(end)
+    simple_partition = SimplePartition(start, end)
+    simple_partition.validate()
     partitions = events_registry.get_source_partitions(simple_partition, registered_source)
 
     # TODO: add test for this case

@@ -1,5 +1,7 @@
 import datetime as dt
 
+from partition_registry.data.func import localize
+
 from partition_registry.actor.registry import EventsRegistry
 from partition_registry.actor.registry import PartitionRegistry
 from partition_registry.actor.registry import SourceRegistry
@@ -27,7 +29,6 @@ def unlock_partition(
     provider_registry: ProviderRegistry,
     events_registry: EventsRegistry,
 ) -> SuccededRegistration | FailedRegistration:
-
     simple_source = SimpleSource(source_name)
     match source_registry.lookup_registered(simple_source):
         case RegisteredSource() as registered_source: ...
@@ -40,7 +41,11 @@ def unlock_partition(
         case _:
             return FailedRegistration(f"Provider <<{simple_provider.name}>> not registered. Please, register provider first...")
     
+    start = localize(start)
+    end = localize(end)
     simple_partition = SimplePartition(start, end)
+    simple_partition.validate()
+    
     match partition_registry.lookup_registered(simple_partition, registered_source, registered_provider):
         case RegisteredPartition() as registered_partition: ...
         case _:

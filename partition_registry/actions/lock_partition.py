@@ -1,6 +1,8 @@
 import datetime as dt
 from dateutil import tz
 
+from partition_registry.data.func import localize
+
 from partition_registry.actor.registry import EventsRegistry
 from partition_registry.actor.registry import PartitionRegistry
 from partition_registry.actor.registry import SourceRegistry
@@ -29,12 +31,6 @@ def lock_partition(
     events_registry: EventsRegistry,
 ) -> SuccededRegistration | FailedRegistration:
 
-    if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
-        start = start.astimezone(tz.UTC)
-    
-    if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
-        end = end.astimezone(tz.UTC)
-    
     simple_source = SimpleSource(source_name)
     match source_registry.lookup_registered(simple_source):
         case RegisteredSource() as registered_source: ...
@@ -47,7 +43,11 @@ def lock_partition(
         case _:
             return FailedRegistration(f"Provider <<{simple_provider.name}>> not registered. Please, register provider first...")
     
+    start = localize(start)
+    end = localize(end)
     simple_partition = SimplePartition(start, end)
+    simple_partition.validate() # TODO: make it safe
+
     match partition_registry.lookup_registered(simple_partition, registered_source, registered_provider):
         case RegisteredPartition() as registered_partition: ...
         case _:

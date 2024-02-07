@@ -1,7 +1,6 @@
-import datetime as dt
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import scoped_session
 from sqlalchemy import func
-from sqlalchemy.orm import aliased
 from sqlalchemy import or_
 from sqlalchemy import and_
 
@@ -27,7 +26,7 @@ from partition_registry.data.event import EventType
 
 
 class EventsRegistry:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: scoped_session[Session]) -> None:
         self.session = session
         self.table = PartitionEventsORM
         self.cache: dict[PartitionEvent, RegisteredPartitionEvent] = dict()

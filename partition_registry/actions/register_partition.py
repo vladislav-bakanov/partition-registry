@@ -1,12 +1,12 @@
 import datetime as dt
-from dateutil import tz
+
+from partition_registry.data.func import localize
 
 from partition_registry.actor.registry import SourceRegistry
 from partition_registry.actor.registry import ProviderRegistry
 from partition_registry.actor.registry import PartitionRegistry
 
 from partition_registry.data.partition import SimplePartition
-from partition_registry.data.partition import RegisteredPartition
 
 from partition_registry.data.source import SimpleSource
 from partition_registry.data.source import RegisteredSource
@@ -27,14 +27,7 @@ def register_partition(
     provider_name: str,
     provider_registry: ProviderRegistry
 ) -> SuccededRegistration | FailedRegistration:
-    
-    if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
-        start = start.astimezone(tz.UTC)
-    
-    if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
-        end = end.astimezone(tz.UTC)
-    
-    simple_partition = SimplePartition(start, end)
+        
     
     simple_source = SimpleSource(source_name)
     match simple_source.safe_validate():
@@ -46,6 +39,11 @@ def register_partition(
         case RegisteredSource() as registered_source: ...
         case _:
             return FailedRegistration(f"Source <<{simple_source.name}>> not registered. Please, register source first...")
+    
+    start = localize(start)
+    end = localize(end)
+    simple_partition = SimplePartition(start, end)
+    simple_partition.validate()
 
     simple_provider = SimpleProvider(provider_name)
     match provider_registry.lookup_registered(simple_provider):

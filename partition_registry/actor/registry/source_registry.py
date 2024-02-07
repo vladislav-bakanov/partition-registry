@@ -15,7 +15,7 @@ from partition_registry.data.status import FailedPersist
 
 
 class SourceRegistry(Registry[SimpleSource, RegisteredSource]):
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: scoped_session[Session]) -> None:
         self.session = session
         self.table = SourcesRegistryORM
         self.cache: dict[SimpleSource, RegisteredSource] = dict()
