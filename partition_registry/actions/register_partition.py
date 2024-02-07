@@ -1,4 +1,5 @@
 import datetime as dt
+from dateutil import tz
 
 from partition_registry.actor.registry import SourceRegistry
 from partition_registry.actor.registry import ProviderRegistry
@@ -26,6 +27,13 @@ def register_partition(
     provider_name: str,
     provider_registry: ProviderRegistry
 ) -> SuccededRegistration | FailedRegistration:
+    
+    if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
+        start = start.astimezone(tz.UTC)
+    
+    if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
+        end = end.astimezone(tz.UTC)
+    
     simple_partition = SimplePartition(start, end)
     
     simple_source = SimpleSource(source_name)

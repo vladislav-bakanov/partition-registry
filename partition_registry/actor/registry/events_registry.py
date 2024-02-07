@@ -1,180 +1,167 @@
+import datetime as dt
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
+from sqlalchemy import or_
+from sqlalchemy import and_
 
 from partition_registry.orm import PartitionEventsORM
-
-from partition_registry.data.registry import Registry
+from partition_registry.orm import PartitionsRegistryORM
+from partition_registry.orm import SourcesRegistryORM
+from partition_registry.orm import ProvidersRegistryORM
 
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
-from partition_registry.data.partition import LockedPartition
+from partition_registry.data.partition import SimplePartition
 from partition_registry.data.partition import RegisteredPartition
 
-from partition_registry.data.partition import UnlockedPartition
-from partition_registry.data.partition import SimplePartition
-from partition_registry.data.partition import is_intersected
-from partition_registry.data.func import safe_parse_datetime
-from partition_registry.data.func import generate_unixtime
+from partition_registry.data.partition import Partition
 
-from partition_registry.data.status import FailedUnlock
-from partition_registry.data.status import SuccededLock
 from partition_registry.data.status import SuccededPersist
 from partition_registry.data.status import FailedPersist
 
 from partition_registry.data.event import PartitionEvent
+from partition_registry.data.event import SimplifiedPartitionEventORM
 from partition_registry.data.event import RegisteredPartitionEvent
+from partition_registry.data.event import EventType
 
 
-class EventsRegistry(Registry[PartitionEvent, RegisteredPartitionEvent]):
+class EventsRegistry:
     def __init__(self, session: Session) -> None:
         self.session = session
-        self.events_table = PartitionEventsORM
+        self.table = PartitionEventsORM
         self.cache: dict[PartitionEvent, RegisteredPartitionEvent] = dict()
 
     def safe_register(
         self,
-        partition: SimplePartition,
+        partition: RegisteredPartition,
         source: RegisteredSource,
-        provider: RegisteredProvider
+        provider: RegisteredProvider,
+        event_type: EventType
     ) -> RegisteredPartitionEvent:
+        event = PartitionEvent(
+            partition=partition,
+            source=source,
+            provider=provider,
+            event_type=event_type
+        )
 
-        match self.lookup_registered(partition, source, provider):
-            case RegisteredPartitionEvent() as registered_event:
-                return registered_event
-        
-        
+        match self.persist(event):
+            case SuccededPersist(): ...
+            case fail:
+                raise ValueError(fail.error_message)
         
         registered_event = RegisteredPartitionEvent(
-            
+            partition=event.partition,
+            source=event.source,
+            provider=event.provider,
+            event_type=event.event_type,
+            created_at=event.created_at
         )
-        
-    def lookup_registered(
+        self.cache[event] = registered_event
+        return registered_event
+
+    def get_partition_id(
         self,
-        partition: SimplePartition,
+        partition: Partition,
         source: RegisteredSource,
         provider: RegisteredProvider
-    ) -> RegisteredPartitionEvent | None:
-        ...
-        
-        
-        
-        
-        
-        
-        
-#         match db_
+    ) -> int | None:
+        session = self.session
+        row = (
+            session
+            .query(PartitionsRegistryORM.id)
+            .join(SourcesRegistryORM, SourcesRegistryORM.id == PartitionsRegistryORM.source_id)
+            .join(ProvidersRegistryORM, ProvidersRegistryORM.id == PartitionsRegistryORM.provider_id)
+            .filter(ProvidersRegistryORM.name == provider.name)
+            .filter(SourcesRegistryORM.name == source.name)
+            .filter(PartitionsRegistryORM.start == partition.start)
+            .filter(PartitionsRegistryORM.end == partition.end)
+            .one_or_none()
+        )
+        return None if not row else row[0]
 
-#     def lookup_registered(self, partition: SimplePartition) -> RegisteredPartition | None:
-#         return self.memory_lookup(partition) or self.db_lookup(partition)
+    def persist(
+        self,
+        event: PartitionEvent
+    ) -> SuccededPersist | FailedPersist:
+        session = self.session
+        partition_id = self.get_partition_id(event.partition, event.source, event.provider)
+        if not partition_id:
+            return FailedPersist("Persist failed. Partition not registered. Register partition first...")
+            
+        record = PartitionEventsORM(
+            partition_id=partition_id,
+            event_type=event.event_type.value,
+            created_at=event.created_at
+        )
+        try:
+            session.add(record)
+        except Exception as e:
+            return FailedPersist(f"Persist failed with error: {e}")
+        else:
+            session.commit()
+        return SuccededPersist()
+
+    def get_source_partitions(
+        self,
+        partition: SimplePartition,
+        source: RegisteredSource
+    ) -> list[PartitionsRegistryORM]:
+        """Get all events by source and provider(optionally), where specified ts is within the partitions
+        """
+
+        rows = (
+            self.session
+            .query(PartitionsRegistryORM)
+            .join(SourcesRegistryORM, SourcesRegistryORM.id == PartitionsRegistryORM.source_id)
+            .filter(SourcesRegistryORM.name == source.name)
+            .filter(
+                or_(
+                    and_(
+                        PartitionsRegistryORM.start <= partition.start,
+                        partition.start < PartitionsRegistryORM.end
+                    ),
+                    and_(
+                        PartitionsRegistryORM.start < partition.end,
+                        partition.end <= PartitionsRegistryORM.end
+                    )
+                )
+            )
+            .distinct()
+            .all()
+        )
+        return rows
+
     
-#     def memory_lookup(self, partition: SimplePartition) -> RegisteredPartition | None:
-#         return self.cache.get(partition)
-    
-#     def db_lookup(self, partition: SimplePartition) -> RegisteredPartition | None:
-#         session = self.session
-#         rows = (
-#             session
-#             .query(self.table)
-#             .filter(self.table.start =)
-#         )
+    def get_last_partition_events(
+        self,
+        partitions: list[PartitionsRegistryORM]
+    ) -> list[SimplifiedPartitionEventORM]:
+        last_events_subquery = (
+            self.session
+            .query(
+                self.table.partition_id,
+                func.max(self.table.registered_at)
+                    .over(partition_by=self.table.partition_id)
+                    .label('max_registered_at')
+            )
+            .filter(self.table.partition_id.in_([partition.id for partition in partitions]))
+            .subquery('last_events')
+        )
 
-#     def persist_to_db(self, partition: RegisteredPartition) -> SuccededPersist | FailedPersist:
-#         ...
-
-    # def lock(
-    #     self,
-    #     source: RegisteredSource,
-    #     provider: RegisteredProvider,
-    #     partition: SimplePartition
-    # ) -> LockedPartition:
-    #     match self.memory_lookup_locked:
-    #         case LockedPartition() as locked_partition:
-    #             return locked_partition
-
-    #     match self.redis_lookup_locked(source, provider, partition):
-    #         case LockedPartition() as locked_partition:
-    #             self.push_to_memory(source, provider, locked_partition)
-    #             return locked_partition
-
-    #     locked_partition = LockedPartition.parse(partition)
-    #     self.safe_add_into_redis(source, provider, locked_partition)
-    #     self.safe_add_into_memory_cache(source, provider, locked_partition)
-    #     return locked_partition
-
-    # def unlock(
-    #     self,
-    #     source: RegisteredSource,
-    #     provider: RegisteredProvider,
-    #     partition: SimplePartition,
-    # ) -> UnlockedPartition | FailedUnlock:
-    #     locked_partition = (
-    #         self.memory_lookup_locked(source, provider, partition)
-    #         or
-    #         self.redis_lookup_locked(source, provider, partition)
-    #     )
-
-    #     if locked_partition is None:
-    #         return FailedUnlock(f"{partition} was not found among locked...")
-
-    #     unlocked_partition = UnlockedPartition.parse(locked_partition)
-    #     self.safe_add_into_redis(source, provider, unlocked_partition)
-    #     self.safe_add_into_memory_cache(source, provider, unlocked_partition)
-    #     self.safe_remove_from_memory(source, provider, locked_partition)
-    #     self.safe_remove_from_redis(source, provider, locked_partition)
-    #     return unlocked_partition
-
-    # def is_partition_locked(
-    #     self,
-    #     source: RegisteredSource,
-    #     provider: RegisteredProvider,
-    #     partition: SimplePartition,
-    # ) -> bool:
-    #     return (
-    #         self.memory_lookup_locked(source, provider, partition) is not None
-    #         or
-    #         self.redis_lookup_locked(source, provider, partition) is not None
-    #     )
-
-    # # TODO: REMASTER!!!
-    # def get_locked_partitions_by_source(self, source: RegisteredSource) -> set[LockedPartition]:
-    #     return {
-    #         locked_partition
-    #         for _, locked_partitions in self.locked.get(source, {}).items()
-    #         for locked_partition in locked_partitions
-    #     }
-    
-    # # TODO: REMASTER!!!
-    # def get_unlocked_partitions_by_source(self, source: RegisteredSource) -> set[UnlockedPartition]:
-    #     return {
-    #         unlocked_partition
-    #         for _, unlocked_partitions in self.unlocked.get(source, {}).items()
-    #         for unlocked_partition in unlocked_partitions
-    #     }
-
-    # def simplify_unlocked(
-    #     self,
-    #     partitions: list[UnlockedPartition]
-    # ) -> set[SimplePartition]:
-    #     """Union all intersected partitions in one set to iterate quicker over it"""
-    #     result: list[SimplePartition] = []
-    #     partitions.sort(key=lambda x: x.start)
-    #     if len(partitions) == 0:
-    #         return set()
-
-    #     current = SimplePartition(partitions[0].start, partitions[0].end)
-    #     for partition in partitions[1:]:
-    #         if is_intersected(partition, current):
-    #             start, end = current.start, max(partition.end, current.end)
-    #         else:
-    #             start, end = partition.start, partition.end
-    #             result.append(current)
-
-    #         current = SimplePartition(start, end)
+        rows = (
+            self.session
+            .query(self.table.partition_id, self.table.event_type, self.table.registered_at)
+            .join(
+                last_events_subquery, 
+                and_(
+                    last_events_subquery.c.partition_id == self.table.partition_id,
+                    last_events_subquery.c.max_registered_at == self.table.registered_at
+                )
+            )
+            .distinct()
+            .all()
+        )
         
-    #     if len(result) == 0:
-    #         return {current, }
-        
-    #     if result[-1] != current:
-    #         result.append(current)
-
-    #     return set(result)
-                
+        return [SimplifiedPartitionEventORM(row[0], row[1], row[2]) for row in rows]

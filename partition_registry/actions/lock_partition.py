@@ -1,64 +1,57 @@
 import datetime as dt
+from dateutil import tz
 
-from partition_registry.actor.registry import 
+from partition_registry.actor.registry import EventsRegistry
+from partition_registry.actor.registry import PartitionRegistry
+from partition_registry.actor.registry import SourceRegistry
+from partition_registry.actor.registry import ProviderRegistry
 
+from partition_registry.data.partition import SimplePartition
+from partition_registry.data.partition import RegisteredPartition
+from partition_registry.data.source import SimpleSource
+from partition_registry.data.source import RegisteredSource
+from partition_registry.data.provider import SimpleProvider
+from partition_registry.data.provider import RegisteredProvider
+from partition_registry.data.event import EventType
 
-from partition_registry.data.status import SuccededLock
-from partition_registry.data.status import FailedLock
+from partition_registry.data.status import FailedRegistration
+from partition_registry.data.status import SuccededRegistration
 
 
 def lock_partition(
     start: dt.datetime,
     end: dt.datetime,
-    events_registry: 
-) -> SuccededLock | FailedLock:
+    partition_registry: PartitionRegistry,
+    source_name: str,
+    source_registry: SourceRegistry,
+    provider_name: str,
+    provider_registry: ProviderRegistry,
+    events_registry: EventsRegistry,
+) -> SuccededRegistration | FailedRegistration:
+
+    if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
+        start = start.astimezone(tz.UTC)
     
+    if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
+        end = end.astimezone(tz.UTC)
+    
+    simple_source = SimpleSource(source_name)
+    match source_registry.lookup_registered(simple_source):
+        case RegisteredSource() as registered_source: ...
+        case _:
+            return FailedRegistration(f"Source <<{simple_source.name}>> not registered. Please, register source first...")
+    
+    simple_provider = SimpleProvider(provider_name)
+    match provider_registry.lookup_registered(simple_provider):
+        case RegisteredProvider() as registered_provider: ...
+        case _:
+            return FailedRegistration(f"Provider <<{simple_provider.name}>> not registered. Please, register provider first...")
+    
+    simple_partition = SimplePartition(start, end)
+    match partition_registry.lookup_registered(simple_partition, registered_source, registered_provider):
+        case RegisteredPartition() as registered_partition: ...
+        case _:
+            return FailedRegistration(f"Partition <<{simple_partition}>> not registered. Please, register partition first...")
 
-
-
-
-
-# import datetime as dt
-
-# from partition_registry.actor.registry import PartitionRegistry
-# from partition_registry.actor.registry import SourceRegistry
-# from partition_registry.actor.registry import ProviderRegistry
-
-# from partition_registry.data.source import SimpleSource
-# from partition_registry.data.provider import SimpleProvider
-# from partition_registry.data.partition import SimplePartition
-# from partition_registry.data.access_token import AccessToken
-
-# from partition_registry.data.status import SuccededLock
-# from partition_registry.data.status import FailedLock
-
-
-# def lock_partition(
-#     source_name: str,
-#     provider_name: str,
-#     access_token: str,
-#     start: dt.datetime,
-#     end: dt.datetime,
-#     partition_registry: PartitionRegistry,
-#     provider_registry: ProviderRegistry,
-#     source_registry: SourceRegistry,
-# ) -> SuccededLock | FailedLock:
-#     simple_partition = SimplePartition(start, end)
-#     simple_partition.validate()
-
-#     simple_source = SimpleSource(source_name)
-#     simple_source.safe_validate()
-
-#     simple_provider = SimpleProvider(provider_name)
-
-#     registered_source = source_registry.safe_register(simple_source)
-#     if not registered_source:
-#         return FailedLock(f"{simple_source} is not registered... Register source to get access_token and provide this access_token to {simple_provider}...")
-
-#     registered_provider = provider_registry.safe_register(simple_provider, AccessToken(access_token))
-#     if registered_provider.access_token != registered_source.access_token:
-#         msg = f"{registered_provider} has no access to the {simple_source}... Please, be sure that you use proper access key for the source..."
-#         return FailedLock(msg)
-
-#     locked_partition = partition_registry.lock(registered_source, registered_provider, simple_partition)
-#     return SuccededLock(locked_partition, f"{simple_partition} has been successfully locked...")
+    registered_event = events_registry.safe_register(registered_partition, registered_source, registered_provider, EventType.LOCK)
+    return SuccededRegistration(registered_event)

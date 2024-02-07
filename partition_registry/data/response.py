@@ -7,6 +7,7 @@ from http import HTTPStatus
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.partition import RegisteredPartition
+from partition_registry.data.event import RegisteredPartitionEvent
 
 from partition_registry.data.source import SimpleSource
 from partition_registry.data.provider import SimpleProvider
@@ -21,7 +22,7 @@ class BaseResponse(Protocol):
 @dc.dataclass(frozen=True)
 class RegistrationResponse(BaseResponse):
     status_code: HTTPStatus
-    source: RegisteredSource | RegisteredProvider | RegisteredPartition
+    source: RegisteredSource | RegisteredProvider | RegisteredPartition | RegisteredPartitionEvent
 
 
 @dc.dataclass(frozen=True)
@@ -43,16 +44,7 @@ class PartitionUnlockResponse(BaseResponse):
 
 
 @dc.dataclass(frozen=True)
-class PartitionReadyResponse(BaseResponse):
+class PartitionResponse(BaseResponse):
     status_code: HTTPStatus
-    message: str
-    source: SimpleSource
-    is_ready: bool = dc.field(init=False, default=True)
-
-
-@dc.dataclass(frozen=True)
-class PartitionNotReadyResponse(BaseResponse):
-    status_code: HTTPStatus
-    message: str
-    source: SimpleSource
-    is_ready: bool = dc.field(init=False, default=False)
+    is_ready: bool
+    message: str | None = dc.field(default=None)

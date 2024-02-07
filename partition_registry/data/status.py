@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from partition_registry.data.partition import UnlockedPartition
-    from partition_registry.data.partition import LockedPartition
+    from partition_registry.data.event import RegisteredPartitionEvent
     from partition_registry.data.source import RegisteredSource
     from partition_registry.data.provider import RegisteredProvider
     from partition_registry.data.partition import RegisteredPartition
@@ -29,14 +29,6 @@ class FailedStatus(Status):
 
 
 @dc.dataclass(frozen=True)
-class SuccededOnAddToQueueStatus(SuccessStatus): ...
-
-
-@dc.dataclass(frozen=True)
-class FailedOnAddToQueueStatus(FailedStatus): ...
-
-
-@dc.dataclass(frozen=True)
 class SuccededPersist(SuccessStatus): ...
 
 
@@ -45,43 +37,22 @@ class FailedPersist(FailedStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class SuccededLock(SuccessStatus):
-    object: "LockedPartition"
-    message: Optional[str] = dc.field(default=None)
-
-
-@dc.dataclass(frozen=True)
-class FailedLock(FailedStatus): ...
-
-
-@dc.dataclass(frozen=True)
-class SuccededUnlock(SuccessStatus):
-    object: "UnlockedPartition"
-    message: Optional[str] = dc.field(default=None)
-
-@dc.dataclass(frozen=True)
-class FailedUnlock(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
 class SuccededRegistration(SuccessStatus):
-    registered_object: "RegisteredSource | RegisteredProvider | RegisteredPartition"
+    registered_object: "RegisteredSource | RegisteredProvider | RegisteredPartition | RegisteredPartitionEvent"
     message: Optional[str] = dc.field(default=None)
 
 
 @dc.dataclass(frozen=True)
-class FailedRegistration(FailedStatus):
-    ...
+class FailedRegistration(FailedStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class NotReadyPartition(FailedStatus): ...
+class PartitionReady(SuccessStatus): ...
 
 
 @dc.dataclass(frozen=True)
-class ReadyPartition(FailedStatus):
-    ready_partition: "UnlockedPartition"
+class PartitionNotReady(Status):
+    reason: str | None
 
 
 @dc.dataclass(frozen=True)

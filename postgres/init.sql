@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS registry.partitions (
     "end" TIMESTAMPTZ NOT NULL,
     source_id INTEGER NOT NULL,
     provider_id INTEGER NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL,
     registered_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (source_id) REFERENCES registry.sources(id),
     FOREIGN KEY (provider_id) REFERENCES registry.providers(id)
@@ -32,8 +32,9 @@ CREATE TABLE IF NOT EXISTS registry.partitions (
 
 -- Registry for partition events
 CREATE TABLE IF NOT EXISTS registry.events (
-    partition_id INT PRIMARY KEY,
-    event TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    partition_id INT,
+    event_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    registered_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (partition_id) REFERENCES registry.partitions(id)
 );
