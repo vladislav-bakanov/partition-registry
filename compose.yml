@@ -3,7 +3,7 @@ version: '3.1'
 services:
   db:
     image: postgres:15.5-alpine3.18
-    container_name: postgres
+    container_name: postgres-v2
     env_file:
       - ./postgres/postgres.env
     restart: always
@@ -11,7 +11,6 @@ services:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - 5432:5432
-
 
   # adminer:
   #   image: adminer
@@ -30,18 +29,18 @@ services:
   #     - ADMINER_DEFAULT_SERVER=PostgreSQL
 
 
-  # web-application:
-  #   build: .
-  #   command:
-  #     - cd ./partition_registry/control
-  #     - uvicorn mainflow:app --host 0.0.0.0 --port 5498
-  #   ports:
-  #     - 5498:5498
-  #   depends_on:
-  #     - db
-  #     # - adminer
-  #   environment:
-  #     - POSTGRES_APPLICATION_HOST='localhost'
-  #     - POSTGRES_APPLICATION_USER='postgres'
-  #     - POSTGRES_APPLICATION_PASSWORD='changeme'
-  #     - POSTGRES_APPLICATION_DATABASE_NAME='partition_registry'
+  web-application:
+    build: .
+    command:
+      - cd ./partition_registry/control
+      - uvicorn mainflow:app --host 0.0.0.0 --port 5498
+    ports:
+      - 5498:5498
+    depends_on:
+      - db
+      # - adminer
+    environment:
+      - POSTGRES_APPLICATION_HOST='localhost'
+      - POSTGRES_APPLICATION_USER='postgres'
+      - POSTGRES_APPLICATION_PASSWORD='changeme'
+      - POSTGRES_APPLICATION_DATABASE_NAME='partition_registry'
