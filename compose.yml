@@ -12,22 +12,21 @@ services:
     ports:
       - 5432:5432
 
-  # adminer:
-  #   image: adminer
-  #   env_file:
-  #     - path: ./default.env
-  #       required: true # default
-  #   restart: always
-  #   ports:
-  #     - 8080:8080
-  #   labels:
-  #     'app': ${APPLICATION_NAME}
-  #   depends_on:
-  #     - db
-  #   environment:
-  #     - ADMINER_DESIGN=dracula
-  #     - ADMINER_DEFAULT_SERVER=PostgreSQL
-
+  adminer:
+    image: adminer
+    env_file:
+      - path: ./.env
+        required: true
+    restart: always
+    ports:
+      - 8080:8080
+    labels:
+      'app': ${APPLICATION_NAME}
+    depends_on:
+      - db
+    environment:
+      - ADMINER_DESIGN=dracula
+      - ADMINER_DEFAULT_SERVER=PostgreSQL
 
   web-application:
     build: .

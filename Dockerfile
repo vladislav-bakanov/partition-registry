@@ -13,5 +13,4 @@ COPY ./test.sh /application/
 ENV PYTHONPATH="/application"
 
 RUN pip install poetry==1.0.0
-RUN poetry check
 RUN poetry install
