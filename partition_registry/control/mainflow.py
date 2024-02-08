@@ -7,10 +7,12 @@ from http import HTTPStatus
 from fastapi import FastAPI
 from fastapi import HTTPException
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
-from partition_registry import actions
+from partition_registry.actions import register_source as reg_source
+from partition_registry.actions import register_provider as reg_provider
+from partition_registry.actions import register_partition as reg_partition
+from partition_registry.actions import lock_partition as _lock_partition
+from partition_registry.actions import unlock_partition as _unlock_partition
+from partition_registry.actions import check_partition_readiness as _check_partition_readiness
 
 from partition_registry.actor.registry import SourceRegistry
 from partition_registry.actor.registry import ProviderRegistry
@@ -49,7 +51,7 @@ with init_postgres_session() as postgres_session:
 
     @app.post("/sources/register")
     def register_source(source_name: str, owner: str) -> dict[str, Any]:
-        response = actions.register_source(source_name, owner, source_registry)
+        response = reg_source(source_name, owner, source_registry)
         match response:
             case FailedRegistration():
                 return HTTPException(HTTPStatus.CONFLICT, response.error_message).__dict__
@@ -59,7 +61,7 @@ with init_postgres_session() as postgres_session:
 
     @app.post("/providers/register")
     def register_provider(provider_name: str, access_token: str) -> dict[str, Any]:
-        response = actions.register_provider(provider_name, access_token, provider_registry)
+        response = reg_provider(provider_name, access_token, provider_registry)
         match response:
             case FailedRegistration():
                 return HTTPException(HTTPStatus.CONFLICT, response.error_message).__dict__
@@ -74,7 +76,7 @@ with init_postgres_session() as postgres_session:
         source_name: str,
         provider_name: str
     ) -> dict[str, Any]:
-        response = actions.register_partition(
+        response = reg_partition(
             start,
             end,
             partition_registry,
@@ -97,7 +99,7 @@ with init_postgres_session() as postgres_session:
         source_name: str,
         provider_name: str
     ) -> dict[str, Any]:    
-        response = actions.lock_partition(
+        response = _lock_partition(
             start,
             end,
             partition_registry,
@@ -121,7 +123,7 @@ with init_postgres_session() as postgres_session:
         source_name: str,
         provider_name: str
     ) -> dict[str, Any]:
-        response = actions.unlock_partition(
+        response = _unlock_partition(
             start,
             end,
             partition_registry,
@@ -144,7 +146,7 @@ with init_postgres_session() as postgres_session:
         start: dt.datetime,
         end: dt.datetime,
     ) -> dict[str, Any]:
-        response = actions.check_partition_readiness(
+        response = _check_partition_readiness(
             start=start,
             end=end,
             source_name=source_name,

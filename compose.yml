@@ -30,14 +30,12 @@ services:
 
   web-application:
     build: .
-    command:
-      - cd ./partition_registry/control
-      - uvicorn mainflow:app --host 0.0.0.0 --port 5498
+    command: /bin/sh -c "cd ./partition_registry/control && uvicorn mainflow:app --host 0.0.0.0 --port 5498"
     ports:
       - 5498:5498
     depends_on:
       - db
-      # - adminer
+      - adminer
     environment:
       - POSTGRES_APPLICATION_HOST='localhost'
       - POSTGRES_APPLICATION_USER='postgres'
