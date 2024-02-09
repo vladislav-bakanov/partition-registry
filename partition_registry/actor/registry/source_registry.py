@@ -10,8 +10,10 @@ from partition_registry.data.registry import Registry
 from partition_registry.data.access_token import AccessToken
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.source import SimpleSource
-from partition_registry.data.status import SuccededPersist
+
 from partition_registry.data.status import FailedPersist
+from partition_registry.data.status import FailedRegistration
+from partition_registry.data.status import AlreadyRegistered
 
 
 class SourceRegistry(Registry[SimpleSource, RegisteredSource]):
@@ -20,19 +22,16 @@ class SourceRegistry(Registry[SimpleSource, RegisteredSource]):
         self.table = SourcesRegistryORM
         self.cache: dict[SimpleSource, RegisteredSource] = dict()
 
-    def safe_register(self, source: SimpleSource, owner: str) -> RegisteredSource:
-        match self.lookup_registered(source):
+    def safe_register(self, source: SimpleSource, owner: str) -> RegisteredSource | AlreadyRegistered | FailedRegistration:
+        if self.is_registered(source):
+            return AlreadyRegistered(source)
+
+        match self.persist(source.name, source.owner, AccessToken.generate()):
             case RegisteredSource() as registered_source:
+                self.cache[source] = registered_source
                 return registered_source
-
-        registered_source = RegisteredSource(source.name, AccessToken.generate(), owner)
-        match self.persist(registered_source):
-            case SuccededPersist(): ...
-            case fail:
-                raise ValueError(fail.error_message)
-
-        self.cache[source] = registered_source
-        return registered_source
+            case FailedPersist() as failed_persist:
+                return FailedRegistration(failed_persist.message)
     
     def lookup_registered(self, source: SimpleSource) -> RegisteredSource | None:
         return self.memory_lookup(source) or self.db_lookup(source)
@@ -54,20 +53,32 @@ class SourceRegistry(Registry[SimpleSource, RegisteredSource]):
             return None
 
         for row in rows:
-            token = AccessToken(row.access_key)
-            return RegisteredSource(row.name, token, row.owner, row.registered_at)
+            token = AccessToken(row.access_token)
+            return RegisteredSource(
+                source_id=row.id,
+                name=row.name,
+                owner=row.owner,
+                access_token=token,
+                registered_at=row.registered_at
+            )
     
-    def persist(self, source: RegisteredSource) -> SuccededPersist | FailedPersist:
+    def persist(self, name: str, owner: str, token: AccessToken) -> RegisteredSource | FailedPersist:
         record = SourcesRegistryORM(
-            name=source.name,
-            owner=source.owner,
-            access_key=source.access_token.token
+            name=name,
+            owner=owner,
+            access_token=token.token
         )
-        session = self.session
         try:
-            session.add(record)
+            self.session.add(record)
         except Exception as e:
             return FailedPersist(f"Persist failed with error: {e}")
         else:
-            session.commit()
-        return SuccededPersist()
+            self.session.commit()
+
+        return RegisteredSource(
+            source_id=record.id,
+            name=record.name,
+            owner=record.owner,
+            access_token=AccessToken(record.access_token),
+            registered_at=record.registered_at
+        )

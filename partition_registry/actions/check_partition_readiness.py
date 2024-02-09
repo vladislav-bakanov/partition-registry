@@ -22,7 +22,6 @@ def check_partition_readiness(
     source_registry: SourceRegistry,
     events_registry: EventsRegistry
 ) -> PartitionReady | PartitionNotReady | FailedRegistration:
-
     simple_source = SimpleSource(source_name)
     match source_registry.lookup_registered(simple_source):
         case None:
@@ -31,7 +30,6 @@ def check_partition_readiness(
                 "Register source first. "
             )
         case RegisteredSource() as registered_source: ...
-    
     
     start = localize(start)
     end = localize(end)

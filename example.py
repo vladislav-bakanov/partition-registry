@@ -5,16 +5,16 @@ from urllib.parse import urljoin
 from pprint import pprint as pp
 import json
 
-# Plese, be sure, that you successfully ran Partition Registry application
-# If not, please, open new Terminal Window:
-# Then change directory to .../partition-registry/partition_registry/control
-# Then run following command: uvicorn mainflow:app --reload to run reloadable server on 127.0.0.1:8000 URL by default
+WEB_SERVICE_URL = "http://127.0.0.1:5498"
 
-BASE_URL = "http://127.0.0.1:8000"
+# This function will safely register a source
+# if this source is already exist, it won't do anything
 source_reg_response = requests.post(
-    urljoin(BASE_URL, 'sources/register'),
-    params={"source_name": "My First Source"}
+    urljoin(WEB_SERVICE_URL, 'sources/register'),
+    params={"source_name": "public.wm_emails"}
 )
+
+# After registration response will contain
 data: dict[str, Any] = source_reg_response.json()
 source: dict[str, Any] = data.get('source', {})
 access_token = source.get('access_token', dict()).get('token')

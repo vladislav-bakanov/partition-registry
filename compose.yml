@@ -1,7 +1,7 @@
 version: '3.1'
 
 services:
-  db:
+  postgres-db:
     image: postgres:15.5-alpine3.18
     container_name: postgres-v2
     env_file:
@@ -23,7 +23,7 @@ services:
     labels:
       'app': ${APPLICATION_NAME}
     depends_on:
-      - db
+      - postgres-db
     environment:
       - ADMINER_DESIGN=dracula
       - ADMINER_DEFAULT_SERVER=PostgreSQL
@@ -34,10 +34,10 @@ services:
     ports:
       - 5498:5498
     depends_on:
-      - db
+      - postgres-db
       - adminer
     environment:
-      - POSTGRES_APPLICATION_HOST='localhost'
-      - POSTGRES_APPLICATION_USER='postgres'
-      - POSTGRES_APPLICATION_PASSWORD='changeme'
-      - POSTGRES_APPLICATION_DATABASE_NAME='partition_registry'
+      - POSTGRES_APPLICATION_HOST=postgres-db
+      - POSTGRES_APPLICATION_USER=postgres
+      - POSTGRES_APPLICATION_PASSWORD=changeme
+      - POSTGRES_APPLICATION_DATABASE_NAME=partition_registry

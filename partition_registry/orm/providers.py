@@ -16,5 +16,5 @@ class ProvidersRegistryORM(Base):
 
     id: Mapped[int] = mapped_column(INTEGER, primary_key=True, nullable=False, autoincrement=True)
     name: Mapped[str] = mapped_column(TEXT, unique=True)
-    access_key: Mapped[str] = mapped_column(TEXT, nullable=False)
+    access_token: Mapped[str] = mapped_column(TEXT, nullable=False)
     registered_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False, default=dt.datetime.utcnow)

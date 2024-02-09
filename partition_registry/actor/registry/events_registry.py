@@ -4,6 +4,8 @@ from sqlalchemy import func
 from sqlalchemy import or_
 from sqlalchemy import and_
 
+from partition_registry.actor.registry import PartitionRegistry
+
 from partition_registry.orm import PartitionEventsORM
 from partition_registry.orm import PartitionsRegistryORM
 from partition_registry.orm import SourcesRegistryORM
@@ -18,6 +20,8 @@ from partition_registry.data.partition import Partition
 
 from partition_registry.data.status import SuccededPersist
 from partition_registry.data.status import FailedPersist
+from partition_registry.data.status import ValidationFailed
+from partition_registry.data.status import LookupFailed
 
 from partition_registry.data.event import PartitionEvent
 from partition_registry.data.event import SimplifiedPartitionEventORM
@@ -33,11 +37,20 @@ class EventsRegistry:
 
     def safe_register(
         self,
-        partition: RegisteredPartition,
+        partition: SimplePartition,
+        partition_registry: PartitionRegistry,
         source: RegisteredSource,
         provider: RegisteredProvider,
         event_type: EventType
-    ) -> RegisteredPartitionEvent:
+    ) -> RegisteredPartitionEvent | ValidationFailed | FailedPersist | LookupFailed:
+        match partition.safe_validate():
+            case ValidationFailed() as failed_validation:
+                return failed_validation
+        
+        if not partition_registry.is_registered(partition, source, provider):
+            return LookupFailed(f"<<{partition}>> by [<<{source}>>, <<{provider}>>] is not registered")
+        
+        
         event = PartitionEvent(
             partition=partition,
             source=source,
@@ -83,11 +96,9 @@ class EventsRegistry:
     def persist(
         self,
         event: PartitionEvent
-    ) -> SuccededPersist | FailedPersist:
+    ) -> RegisteredPartitionEvent | FailedPersist:
         session = self.session
-        partition_id = self.get_partition_id(event.partition, event.source, event.provider)
-        if not partition_id:
-            return FailedPersist("Persist failed. Partition not registered. Register partition first...")
+        
             
         record = PartitionEventsORM(
             partition_id=partition_id,

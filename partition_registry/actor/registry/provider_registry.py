@@ -10,6 +10,7 @@ from partition_registry.data.access_token import AccessToken
 
 from partition_registry.data.status import FailedPersist
 from partition_registry.data.status import SuccededPersist
+from partition_registry.data.status import AlreadyRegistered
 
 from partition_registry.orm import ProvidersRegistryORM
 
@@ -20,24 +21,17 @@ class ProviderRegistry(Registry[SimpleProvider, RegisteredProvider]):
         self.table = ProvidersRegistryORM
         self.cache: dict[str, RegisteredProvider] = dict()
     
-    def safe_register(
-        self,
-        provider: SimpleProvider,
-        access_token: str,
-    ) -> RegisteredProvider:
-        match self.lookup_registered(provider):
-            case RegisteredProvider() as registered_provider:
-                return registered_provider
+    def safe_register(self, provider: SimpleProvider, access_token: str) -> RegisteredProvider | AlreadyRegistered | FailedPersist:
+        if self.is_registered(provider):
+            return AlreadyRegistered(provider)
         
         token = AccessToken(access_token)
-        registered_provider = RegisteredProvider(provider.name, token)
-        match self.persist(registered_provider):
-            case SuccededPersist(): ...
-            case fail:
-                raise ValueError(fail.error_message)
-
-        self.cache[provider.name] = registered_provider
-        return registered_provider
+        match self.persist(provider.name, token):
+            case RegisteredProvider() as registered_provider:
+                self.cache[provider.name] = registered_provider
+                return registered_provider
+            case FailedPersist() as fail:
+                return FailedPersist(fail.message)
 
     def lookup_registered(self, provider: Provider) -> RegisteredProvider | None:
         return self.memory_lookup(provider) or self.db_lookup(provider)
@@ -56,21 +50,20 @@ class ProviderRegistry(Registry[SimpleProvider, RegisteredProvider]):
             .filter(self.table.name == provider.name)
             .all()
         )
-        if len(rows) == 0:
+        if not rows:
             return None
 
         for row in rows:
-            if row is None:
-                return None
-
-            token = AccessToken(row.access_key)
-            return RegisteredProvider(row.name, token)
+            token = AccessToken(row.access_token)
+            return RegisteredProvider(
+                provider_id=row.id,
+                name=row.name,
+                access_token=token,
+                registered_at=row.registered_at
+            )
     
-    def persist(self, provider: RegisteredProvider) -> SuccededPersist | FailedPersist:
-        record = ProvidersRegistryORM(
-            name=provider.name,
-            access_key=provider.access_token.token
-        )
+    def persist(self, name: str, access_token: AccessToken) -> RegisteredProvider | FailedPersist:
+        record = ProvidersRegistryORM(name=name, access_key=access_token.token)
         session = self.session
         try:
             session.add(record)
@@ -78,4 +71,10 @@ class ProviderRegistry(Registry[SimpleProvider, RegisteredProvider]):
             return FailedPersist(f"Persist failed with error: {e}")
         else:
             session.commit()
-        return SuccededPersist()
+
+        return RegisteredProvider(
+            provider_id=record.id,
+            name=record.name,
+            access_token=AccessToken(record.access_token),
+            registered_at=record.registered_at
+        )

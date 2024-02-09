@@ -21,7 +21,6 @@ class PartitionsRegistryORM(Base):
     end: Mapped[dt.datetime] = mapped_column(DATETIME, nullable=False)
     source_id: Mapped[int] = mapped_column(INTEGER, nullable=False)
     provider_id: Mapped[int] = mapped_column(INTEGER, nullable=False) 
-    created_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False, default=dt.datetime.utcnow)
     registered_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False, default=dt.datetime.utcnow)
 
 

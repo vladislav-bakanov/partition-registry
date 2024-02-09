@@ -5,6 +5,7 @@ import pytz
 
 
 from partition_registry.data.partition import RegisteredPartition
+from partition_registry.data.partition import Partition
 from partition_registry.data.partition import SimplePartition
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
@@ -27,14 +28,10 @@ class PartitionEvent:
     source: RegisteredSource
     provider: RegisteredProvider
     event_type: EventType
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
 
-@dc.dataclass(frozen=True)    
-class RegisteredPartitionEvent(PartitionEvent):
+@dc.dataclass(frozen=True)
+class RegisteredPartitionEvent:
     partition: RegisteredPartition
-    source: RegisteredSource
-    provider: RegisteredProvider
     event_type: EventType
-    created_at: dt.datetime
     registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))

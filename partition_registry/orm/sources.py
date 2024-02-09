@@ -19,5 +19,5 @@ class SourcesRegistryORM(Base):
     id: Mapped[int] = mapped_column(INTEGER, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(TEXT, unique=True)
     owner: Mapped[str] = mapped_column(TEXT, nullable=True)
-    access_key: Mapped[str] = mapped_column(TEXT, nullable=False)
+    access_token: Mapped[str] = mapped_column(TEXT, nullable=False)
     registered_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False, server_default=func.now())
