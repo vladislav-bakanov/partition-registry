@@ -3,10 +3,7 @@ import datetime as dt
 import enum
 import pytz
 
-
 from partition_registry.data.partition import RegisteredPartition
-from partition_registry.data.partition import Partition
-from partition_registry.data.partition import SimplePartition
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
 
@@ -24,7 +21,7 @@ class SimplifiedPartitionEventORM:
 
 @dc.dataclass(frozen=True)
 class SimplePartitionEvent:
-    partition: SimplePartition
+    partition: RegisteredPartition
     source: RegisteredSource
     provider: RegisteredProvider
     event_type: EventType

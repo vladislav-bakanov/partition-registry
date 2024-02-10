@@ -7,15 +7,17 @@ from partition_registry.data.partition import RegisteredPartition
 from partition_registry.data.event import RegisteredPartitionEvent
 
 
-dc.dataclass(frozen=True)
+@dc.dataclass(frozen=True)
 class BaseResponse:
     status_code: HTTPStatus
 
 
-class RegistrationResponse(BaseResponse):
-    object: RegisteredSource | RegisteredProvider | RegisteredPartition | RegisteredPartitionEvent
+@dc.dataclass(frozen=True)
+class SucceededRegistrationResponse(BaseResponse):
+    registered_object: RegisteredSource | RegisteredProvider | RegisteredPartition | RegisteredPartitionEvent
 
 
+@dc.dataclass(frozen=True)
 class PartitionReadinessResponse(BaseResponse):
     is_ready: bool
     message: str | None = dc.field(default=None)

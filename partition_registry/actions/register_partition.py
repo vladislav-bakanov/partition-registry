@@ -1,21 +1,18 @@
 import datetime as dt
 
-from partition_registry.data.func import localize
+from partition_registry.actor.source_registry import SourceRegistry
+from partition_registry.actor.provider_registry import ProviderRegistry
+from partition_registry.actor.partition_registry import PartitionRegistry
 
-from partition_registry.actor.registry import SourceRegistry
-from partition_registry.actor.registry import ProviderRegistry
-from partition_registry.actor.registry import PartitionRegistry
-
-from partition_registry.data.partition import SimplePartition
-
-from partition_registry.data.source import SimpleSource
-from partition_registry.data.source import RegisteredSource
-from partition_registry.data.provider import SimpleProvider
-from partition_registry.data.provider import RegisteredProvider
+from partition_registry.data.partition import RegisteredPartition
 
 from partition_registry.data.status import SuccededRegistration
 from partition_registry.data.status import FailedRegistration
-from partition_registry.data.status import ValidationSucceded
+from partition_registry.data.status import AccessDenied
+from partition_registry.data.status import LookupFailed
+from partition_registry.data.status import AlreadyRegistered
+from partition_registry.data.status import FailedPersist
+from partition_registry.data.status import ValidationFailed
 
 
 def register_partition(
@@ -27,35 +24,25 @@ def register_partition(
     provider_name: str,
     provider_registry: ProviderRegistry
 ) -> SuccededRegistration | FailedRegistration:
-        
-    
-    simple_source = SimpleSource(source_name)
-    match simple_source.safe_validate():
-        case ValidationSucceded(): ...
-        case failed_validation:
-            return FailedRegistration(failed_validation.error_message)
-    
-    match source_registry.lookup_registered(simple_source):
-        case RegisteredSource() as registered_source: ...
-        case _:
-            return FailedRegistration(f"Source <<{simple_source.name}>> not registered. Please, register source first...")
-    
-    start = localize(start)
-    end = localize(end)
-    simple_partition = SimplePartition(start, end)
-    simple_partition.validate()
+    match partition_registry.safe_register(
+        start=start,
+        end=end,
+        source_name=source_name,
+        source_registry=source_registry,
+        provider_name=provider_name,
+        provider_registry=provider_registry
+    ):
+        case FailedPersist() as failed_persist:
+            return FailedRegistration(failed_persist.message)
+        case AlreadyRegistered() as already_registered:
+            return FailedRegistration(already_registered.message)
+        case ValidationFailed() as validation_failed:
+            return FailedRegistration(validation_failed.message)
+        case LookupFailed() as lookup_failed:
+            return FailedRegistration(lookup_failed.message)
+        case AccessDenied() as access_denied:
+            return FailedRegistration(access_denied.message)
+        case RegisteredPartition() as registered_partition:
+            ...
 
-    simple_provider = SimpleProvider(provider_name)
-    match provider_registry.lookup_registered(simple_provider):
-        case RegisteredProvider() as registered_provider: ...
-        case _:
-            return FailedRegistration(f"Provider <<{simple_provider.name}>> not registered. Please, register provider first...")
-
-    if registered_provider.access_token != registered_source.access_token:
-        return FailedRegistration(
-            f"Provider <<{registered_provider.name}>> has no access for the source <<{registered_source.name}>> "
-            "due to incorrect access token. Please, be sure you use a valid access key for the source..."
-        )
-
-    registered_partition = partition_registry.safe_register(simple_partition, registered_source, registered_provider)
     return SuccededRegistration(registered_partition)

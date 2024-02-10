@@ -1,4 +1,4 @@
 from partition_registry.orm.partitions import PartitionsRegistryORM
-from partition_registry.orm.partitions import PartitionEventsORM
+from partition_registry.orm.events import PartitionEventsORM
 from partition_registry.orm.providers import ProvidersRegistryORM
 from partition_registry.orm.sources import SourcesRegistryORM

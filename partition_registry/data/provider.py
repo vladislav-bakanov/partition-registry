@@ -12,7 +12,7 @@ from partition_registry.data.status import ValidationSucceded
 
 class Provider(Protocol):
     name: str
-    
+
     def safe_validate(self) -> ValidationSucceded | ValidationFailed:
         if not self.name:
             return ValidationFailed("Provier name shouldn't be empty...")

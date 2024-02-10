@@ -1,71 +1,45 @@
 import datetime as dt
 
-from partition_registry.data.func import localize
-
-from partition_registry.actor.registry import EventsRegistry
-from partition_registry.actor.registry import SourceRegistry
+from partition_registry.actor.events_registry import EventsRegistry
+from partition_registry.actor.partition_registry import PartitionRegistry
 
 from partition_registry.data.event import EventType
-from partition_registry.data.source import SimpleSource
-from partition_registry.data.source import RegisteredSource
-from partition_registry.data.partition import SimplePartition
 
 from partition_registry.data.status import PartitionReady
 from partition_registry.data.status import PartitionNotReady
-from partition_registry.data.status import FailedRegistration
 
 
 def check_partition_readiness(
     start: dt.datetime,
     end: dt.datetime,
     source_name: str,
-    source_registry: SourceRegistry,
-    events_registry: EventsRegistry
-) -> PartitionReady | PartitionNotReady | FailedRegistration:
-    simple_source = SimpleSource(source_name)
-    match source_registry.lookup_registered(simple_source):
-        case None:
-            return FailedRegistration(
-                f"Can't check readiness. Source with name <<{simple_source.name}>> not registered. "
-                "Register source first. "
-            )
-        case RegisteredSource() as registered_source: ...
-    
-    start = localize(start)
-    end = localize(end)
-    simple_partition = SimplePartition(start, end)
-    simple_partition.validate()
-    partitions = events_registry.get_source_partitions(simple_partition, registered_source)
+    partition_registry: PartitionRegistry,
+    events_registry: EventsRegistry,
+) -> PartitionReady | PartitionNotReady:
+    partitions = partition_registry.get_filtered_partitions(start, end, source_name)
 
-    # TODO: add test for this case
     if not partitions:
-        return PartitionNotReady(
-            f"There are no registered partitions by source <<{simple_source.name}>> "
-            f"which could meet the conditions of required period: {start} - {end}..."
-        )
+        return PartitionNotReady(f"There are no registered partitions by source <<{source_name}>> within the requested interval: <<{start} : {end}>>")
 
-    # TODO: add test for this case
-    events = events_registry.get_last_partition_events(partitions)
+    events = events_registry.get_partition_events(partitions)
+    if not events:
+        return PartitionNotReady(f"There are no registered events by source <<{source_name}>> within the requested interval: <<{start} : {end}>> ")
+
     for event in events:
         if event.event_type == EventType.LOCK.value:
-            return PartitionNotReady(
-                f"Source is locked by: <<partition_id:{event.id}>>..."
-            )
+            return PartitionNotReady(f"Source is locked by: <<partition_id:{event.id}>>...")
 
-    # TODO: add test for this case
+    
     # Case when partition is registered but we don't have any event by this partition
     partitions_presented_in_events = [event.id for event in events]
     real_partitions = [partition for partition in partitions if partition.id in partitions_presented_in_events]
     if not real_partitions:
-        return PartitionNotReady(
-            f"Source <<{simple_source.name}>> has registered partitions, but "
-            f"there are no events which could meet the requirements of desired interval: {start} - {end}..."
-        )
+        return PartitionNotReady(f"There are no events by registered partitions for Source <<{source_name}>> within the requested interval: <<{start} : {end}>>")
 
     # Case when first partition partition start date is greater than interval
     # and due to that fact can't be comprehensively covered
     # It's look like:
-    # 
+    #
     # v
     # | desired_partition |
     #    |    p_1   ||   p_2   | ... |    p_n    |
@@ -74,8 +48,8 @@ def check_partition_readiness(
     first_partition = min(real_partitions, key=lambda p: p.start)
     if first_partition.start > start:
         return PartitionNotReady(
-            f"First partition <<{first_partition.__dict__}>> sorted by <<start>> is greater "
-            f"than start point <<{start}>> of desired interval..."
+            "Requested interval not comprehensively covered by registered partitions..."
+            f"\nThere are no partitions to cover interval: <<{start} : {first_partition.start}>>"
         )
 
     # Case when intersected partition start date is less than end date in desired partition
@@ -89,8 +63,8 @@ def check_partition_readiness(
     last_partition = max(real_partitions, key=lambda p: p.end)
     if last_partition.end < end:
         return PartitionNotReady(
-            f"Last partition <<{last_partition.__dict__}>> sorted by <<start>> is less "
-            f"than end point <<{end}>> of desired interval..."
+            "Requested interval not comprehensively covered by registered partitions..."
+            f"\nThere are no partitions to cover interval: <<{last_partition.end} : {end}>>"
         )
 
     sorted_events = sorted(real_partitions, key=lambda p: p.start)
@@ -111,10 +85,10 @@ def check_partition_readiness(
     while current_position < total_events:
         if current_end < sorted_events[current_position].start:
             return PartitionNotReady(
-                "Desired interval not comprehesively convered. "
-                f"There is a gap between partitions: {current_end}-{sorted_events[current_position].start}"
+                "Requested interval not comprehesively convered..."
+                f"There are not events to cover interval: <<{current_end} : {sorted_events[current_position].start}>>"
             )
         current_end = sorted_events[current_position].end
         current_position += 1
-        
+
     return PartitionReady()

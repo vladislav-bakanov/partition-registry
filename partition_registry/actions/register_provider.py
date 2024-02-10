@@ -1,4 +1,4 @@
-from partition_registry.actor.registry import ProviderRegistry
+from partition_registry.actor.provider_registry import ProviderRegistry
 
 from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.status import SuccededRegistration
@@ -14,8 +14,6 @@ def register_provider(
     provider_registry: ProviderRegistry
 ) -> SuccededRegistration | FailedRegistration:
     match provider_registry.safe_register(provider_name, access_token):
-        case RegisteredProvider() as registered_provider:
-            return SuccededRegistration(registered_provider)
         case AlreadyRegistered() as already_registered:
             return FailedRegistration(already_registered.message)
         case FailedRegistration() as failed_registration:
@@ -24,3 +22,7 @@ def register_provider(
             return FailedRegistration(validation_failed.message)
         case FailedPersist() as failed_persist:
             return FailedRegistration(failed_persist.message)
+        case RegisteredProvider() as registered_provider:
+            ...
+
+    return SuccededRegistration(registered_provider)

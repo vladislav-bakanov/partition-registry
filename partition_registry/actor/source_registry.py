@@ -29,30 +29,32 @@ class SourceRegistry:
         match simple_source.safe_validate():
             case ValidationFailed() as failed_validation:
                 return ValidationFailed(failed_validation.message)
-        
+
         if self.is_registered(simple_source.name):
             return AlreadyRegistered(simple_source)
 
-        match self.persist(simple_source.name, owner, AccessToken.generate()):
+        match self.persist(simple_source, AccessToken.generate()):
             case RegisteredSource() as registered_source:
                 self.cache[simple_source.name] = registered_source
-                return registered_source
             case FailedPersist() as failed_persist:
                 return failed_persist
-    
+
+        return registered_source
+
     def lookup_registered(self, source_name: str) -> RegisteredSource | LookupFailed:
-        return self.memory_lookup(source_name) or self.db_lookup(source_name)
-    
+        return (
+            self.memory_lookup(source_name)
+            or self.db_lookup(source_name)
+            or LookupFailed(f"Source<<{source_name}>> not registered...")
+        )
+
     def is_registered(self, source_name: str) -> bool:
         return isinstance(self.lookup_registered(source_name), RegisteredSource)
 
-    def memory_lookup(self, source_name: str) -> RegisteredSource | LookupFailed:
-        return self.cache.get(
-            source_name,
-            LookupFailed(f"Source <{source_name}> not registered...")
-        )
+    def memory_lookup(self, source_name: str) -> RegisteredSource | None:
+        return self.cache.get(source_name)
 
-    def db_lookup(self, source_name: str) -> RegisteredSource | LookupFailed:
+    def db_lookup(self, source_name: str) -> RegisteredSource | None:
         rows = (
             self.session
             .query(self.table)
@@ -70,20 +72,20 @@ class SourceRegistry:
                 registered_at=row.registered_at
             )
 
-        return LookupFailed(f"Source <{source_name}> not registered...")
-    
-    def persist(self, name: str, owner: str, token: AccessToken) -> RegisteredSource | FailedPersist:
+        return None
+
+    def persist(self, source: SimpleSource, access_token: AccessToken) -> RegisteredSource | FailedPersist:
         record = SourcesRegistryORM(
-            name=name,
-            owner=owner,
-            access_token=token.token
+            name=source.name,
+            owner=source.owner,
+            access_token=access_token.token
         )
         try:
             self.session.add(record)
         except Exception as e:
             return FailedPersist(f"Persist failed with error: {e}")
-        else:
-            self.session.commit()
+
+        self.session.commit()
 
         return RegisteredSource(
             source_id=record.id,

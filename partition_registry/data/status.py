@@ -2,12 +2,10 @@ import dataclasses as dc
 
 from typing import Any
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from partition_registry.data.source import Source
     from partition_registry.data.source import SimpleSource
-    from partition_registry.data.provider import Provider
     from partition_registry.data.provider import SimpleProvider
-    from partition_registry.data.partition import Partition
     from partition_registry.data.partition import SimplePartition
 
 
@@ -43,7 +41,7 @@ class LookupFailed(Fail): ...
 
 @dc.dataclass(frozen=True)
 class AlreadyRegistered(Status):
-    obj: SimpleSource | SimpleProvider | SimplePartition
+    obj: "SimpleSource | SimpleProvider | SimplePartition"
     message: str = dc.field(default="Object already registered...")
 
 @dc.dataclass(frozen=True)
@@ -58,7 +56,7 @@ class PartitionReady(Success): ...
 
 @dc.dataclass(frozen=True)
 class PartitionNotReady(Success):
-    reason: str | None
-    
+    reason: str
+
 @dc.dataclass(frozen=True)
 class AccessDenied(Fail): ...

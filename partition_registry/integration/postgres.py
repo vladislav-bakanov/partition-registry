@@ -1,5 +1,4 @@
 import os
-import requests
 from typing import Iterator
 from contextlib import contextmanager
 

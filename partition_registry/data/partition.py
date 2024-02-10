@@ -2,6 +2,7 @@ from typing import Protocol
 
 import dataclasses as dc
 import datetime as dt
+import pytz
 
 from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.source import RegisteredSource
@@ -9,7 +10,6 @@ from partition_registry.data.source import RegisteredSource
 from partition_registry.data.status import ValidationFailed
 from partition_registry.data.status import ValidationSucceded
 
-import pytz
 
 
 class Partition(Protocol):
@@ -18,13 +18,14 @@ class Partition(Protocol):
 
     def safe_validate(self) -> ValidationFailed | ValidationSucceded:
         """Validate partition properties
-        Raises:
-            ValueError(): in case if partition has the same start and the end
-            ValueError(): in case if partition has end erlier than the end
         """
+        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
+            return ValidationFailed(f"<<{self.__class__.__name__}.start>> value should contain timezone info...")
+        if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
+            return ValidationFailed(f"<<{self.__class__.__name__}.end>> value should contain timezone info...")
         if self.start == self.end:
             return ValidationFailed("Partition start and end should be different")
-        if self.start <= self.end:
+        if self.end < self.start:
             return ValidationFailed("Partition start should be earlier than partition end")
         
         return ValidationSucceded()
@@ -33,7 +34,7 @@ class Partition(Protocol):
         ...
 
     def __repr__(self) -> str:
-        return self.__str__()
+        return str(self)
 
 
 @dc.dataclass(frozen=True)

@@ -6,26 +6,36 @@ import dataclasses as dc
 import pytz
 
 from partition_registry.data.access_token import AccessToken
+
 from partition_registry.data.status import ValidationSucceded
 from partition_registry.data.status import ValidationFailed
 
 
 class Source(Protocol):
     name: str
-    
+    owner: str
+
     def safe_validate(self) -> ValidationSucceded | ValidationFailed:
         if not self.name:
-            return ValidationFailed("Source name shouldn't be empty...")
+            return ValidationFailed("Source.name shouldn't be empty...")
+
         for char in self.name:
             if not char.strip():
-                return ValidationFailed("Source name shouldn't contain any spaces...")
+                return ValidationFailed("Source.name can't contain any spaces...")
+
+        if not self.name:
+            return ValidationFailed("Source.owner shouldn't be empty...")
+
+        for char in self.owner:
+            if not char.strip():
+                return ValidationFailed("Source.owner can't contain any spaces...")
 
         return ValidationSucceded()
 
     def __str__(self) -> str: ...
 
     def __repr__(self) -> str:
-        return self.__str__()
+        return str(self)
 
 
 @dc.dataclass(frozen=True)
