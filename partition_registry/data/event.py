@@ -23,7 +23,7 @@ class SimplifiedPartitionEventORM:
 
 
 @dc.dataclass(frozen=True)
-class PartitionEvent:
+class SimplePartitionEvent:
     partition: SimplePartition
     source: RegisteredSource
     provider: RegisteredProvider

@@ -30,5 +30,4 @@ class PartitionEventsORM(Base):
 
     partition_id: Mapped[int] = mapped_column(INTEGER, nullable=False, primary_key=True)
     event_type: Mapped[str] = mapped_column(TEXT, nullable=False)
-    created_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False)
     registered_at: Mapped[dt.datetime] = mapped_column(DATETIME(timezone=True), nullable=False, default=dt.datetime.utcnow)

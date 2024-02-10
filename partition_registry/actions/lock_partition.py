@@ -1,5 +1,4 @@
 import datetime as dt
-from dateutil import tz
 
 from partition_registry.data.func import localize
 
@@ -10,6 +9,7 @@ from partition_registry.actor.registry import ProviderRegistry
 
 from partition_registry.data.partition import SimplePartition
 from partition_registry.data.partition import RegisteredPartition
+from partition_registry.data.event import RegisteredPartitionEvent
 from partition_registry.data.source import SimpleSource
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import SimpleProvider
@@ -18,6 +18,9 @@ from partition_registry.data.event import EventType
 
 from partition_registry.data.status import FailedRegistration
 from partition_registry.data.status import SuccededRegistration
+from partition_registry.data.status import ValidationFailed
+from partition_registry.data.status import LookupFailed
+from partition_registry.data.status import FailedPersist
 
 
 def lock_partition(
@@ -29,29 +32,49 @@ def lock_partition(
     provider_name: str,
     provider_registry: ProviderRegistry,
     events_registry: EventsRegistry,
-) -> SuccededRegistration | FailedRegistration:
+) -> SuccededRegistration | FailedRegistration | ValidationFailed | LookupFailed | FailedPersist:
 
     simple_source = SimpleSource(source_name)
+    match simple_source.safe_validate():
+        case ValidationFailed() as failed_validation:
+            return failed_validation
+    
     match source_registry.lookup_registered(simple_source):
+        case None:
+            return FailedRegistration(f"<<{simple_source.name}>> not registered. Please, register source first...")
         case RegisteredSource() as registered_source: ...
-        case _:
-            return FailedRegistration(f"Source <<{simple_source.name}>> not registered. Please, register source first...")
     
     simple_provider = SimpleProvider(provider_name)
+    match simple_provider.safe_validate():
+        case ValidationFailed() as failed_validation:
+            return failed_validation
+    
     match provider_registry.lookup_registered(simple_provider):
+        case None:
+            return FailedRegistration(f"<<{simple_provider.name}>> not registered. Please, register provider first...")
         case RegisteredProvider() as registered_provider: ...
-        case _:
-            return FailedRegistration(f"Provider <<{simple_provider.name}>> not registered. Please, register provider first...")
     
     start = localize(start)
     end = localize(end)
+
     simple_partition = SimplePartition(start, end)
-    simple_partition.validate() # TODO: make it safe
+    match simple_partition.safe_validate():
+        case ValidationFailed() as failed_validation:
+            return failed_validation
 
-    match partition_registry.lookup_registered(simple_partition, registered_source, registered_provider):
-        case RegisteredPartition() as registered_partition: ...
-        case _:
-            return FailedRegistration(f"Partition <<{simple_partition}>> not registered. Please, register partition first...")
+    if not partition_registry.is_registered(simple_partition, registered_source, registered_provider):
+        return FailedRegistration(f"Partition <<{simple_partition}>> not registered. Please, register partition first...")
 
-    registered_event = events_registry.safe_register(registered_partition, registered_source, registered_provider, EventType.LOCK)
+    match events_registry.safe_register(
+        partition=simple_partition,
+        partition_registry=partition_registry,
+        source=registered_source,
+        provider=registered_provider,
+        event_type=EventType.LOCK
+    ):
+        case RegisteredPartitionEvent() as registered_event:
+            ...
+        case fail:
+            return fail
+    
     return SuccededRegistration(registered_event)

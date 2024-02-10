@@ -1,11 +1,11 @@
 from partition_registry.actor.registry import SourceRegistry
 
-from partition_registry.data.source import SimpleSource
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.status import SuccededRegistration
 from partition_registry.data.status import FailedRegistration
-from partition_registry.data.status import ValidationSucceded
 from partition_registry.data.status import ValidationFailed
+from partition_registry.data.status import AlreadyRegistered
+from partition_registry.data.status import FailedPersist
 
 
 def register_source(
@@ -13,15 +13,14 @@ def register_source(
     owner: str,
     source_registry: SourceRegistry
 ) -> SuccededRegistration | FailedRegistration:
-
-    simple_source = SimpleSource(source_name)
-    match simple_source.safe_validate():
-        case ValidationFailed() as failed_validation:
-            return FailedRegistration(failed_validation.error_message)
-    
-    match source_registry.lookup_registered(simple_source):
+    match source_registry.safe_register(source_name, owner):
         case RegisteredSource() as registered_source:
             return SuccededRegistration(registered_source)
-
-    registered_source = source_registry.safe_register(simple_source, owner)
-    return SuccededRegistration(registered_source)
+        case AlreadyRegistered() as already_registered:
+            return FailedRegistration(already_registered.message)
+        case FailedRegistration() as failed_registration:
+            return FailedRegistration(failed_registration.message)
+        case FailedPersist() as failed_persist:
+            return FailedRegistration(failed_persist.message)
+        case ValidationFailed() as validation_failed:
+            return FailedRegistration(validation_failed.message)

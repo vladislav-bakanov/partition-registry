@@ -14,12 +14,6 @@ class Source(Protocol):
     name: str
     
     def safe_validate(self) -> ValidationSucceded | ValidationFailed:
-        """
-        Validate source.
-        Expected, that:
-        - Source should have a non-empty name.
-            Raises: ValueError()
-        """
         if not self.name:
             return ValidationFailed("Source name shouldn't be empty...")
         for char in self.name:
@@ -43,7 +37,7 @@ class SimpleSource(Source):
         return (
             f"{self.__class__.__name__}"
             f"(name='{self.name}', "
-            f"owner='{self.owner}'"
+            f"(owner='{self.owner}'"
             ")"
         )
 

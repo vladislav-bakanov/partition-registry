@@ -13,14 +13,13 @@ from partition_registry.data.status import ValidationSucceded
 class Provider(Protocol):
     name: str
     
-    def safe_validate(self) -> ValidationFailed | ValidationSucceded:
-        # TODO: implement
-        ...
-        
-    
-    def __str__(self) -> str: ...
-    def __repr__(self) -> str:
-        return self.__str__()
+    def safe_validate(self) -> ValidationSucceded | ValidationFailed:
+        if not self.name:
+            return ValidationFailed("Provier name shouldn't be empty...")
+        for char in self.name:
+            if not char.strip():
+                return ValidationFailed("Provider name shouldn't contain any spaces...")
+        return ValidationSucceded()
 
 
 @dc.dataclass(frozen=True)

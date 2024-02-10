@@ -1,5 +1,6 @@
 import dataclasses as dc
 
+from typing import Any
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from partition_registry.data.source import Source
@@ -43,13 +44,13 @@ class LookupFailed(Fail): ...
 @dc.dataclass(frozen=True)
 class AlreadyRegistered(Status):
     obj: SimpleSource | SimpleProvider | SimplePartition
-    message: str | None = dc.field(default=None)
+    message: str = dc.field(default="Object already registered...")
 
 @dc.dataclass(frozen=True)
 class SuccededRegistration(Success):
-    obj: Source | Provider | Partition
-    message: str | None
-    payload: str | None
+    obj: Any
+    message: str | None = dc.field(default=None)
+    payload: str | None = dc.field(default=None)
 
 
 @dc.dataclass(frozen=True)
@@ -58,3 +59,6 @@ class PartitionReady(Success): ...
 @dc.dataclass(frozen=True)
 class PartitionNotReady(Success):
     reason: str | None
+    
+@dc.dataclass(frozen=True)
+class AccessDenied(Fail): ...

@@ -1,3 +1,5 @@
+import datetime as dt
+
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import func
@@ -5,25 +7,23 @@ from sqlalchemy import or_
 from sqlalchemy import and_
 
 from partition_registry.actor.registry import PartitionRegistry
+from partition_registry.actor.registry import SourceRegistry
+from partition_registry.actor.registry import ProviderRegistry
 
 from partition_registry.orm import PartitionEventsORM
 from partition_registry.orm import PartitionsRegistryORM
 from partition_registry.orm import SourcesRegistryORM
-from partition_registry.orm import ProvidersRegistryORM
 
 from partition_registry.data.source import RegisteredSource
 from partition_registry.data.provider import RegisteredProvider
 from partition_registry.data.partition import SimplePartition
 from partition_registry.data.partition import RegisteredPartition
 
-from partition_registry.data.partition import Partition
-
-from partition_registry.data.status import SuccededPersist
 from partition_registry.data.status import FailedPersist
 from partition_registry.data.status import ValidationFailed
 from partition_registry.data.status import LookupFailed
 
-from partition_registry.data.event import PartitionEvent
+from partition_registry.data.event import SimplePartitionEvent
 from partition_registry.data.event import SimplifiedPartitionEventORM
 from partition_registry.data.event import RegisteredPartitionEvent
 from partition_registry.data.event import EventType
@@ -33,77 +33,53 @@ class EventsRegistry:
     def __init__(self, session: scoped_session[Session]) -> None:
         self.session = session
         self.table = PartitionEventsORM
-        self.cache: dict[PartitionEvent, RegisteredPartitionEvent] = dict()
+        self.cache: dict[SimplePartitionEvent, RegisteredPartitionEvent] = dict()
 
     def safe_register(
         self,
-        partition: SimplePartition,
+        start: dt.datetime,
+        end: dt.datetime,
         partition_registry: PartitionRegistry,
-        source: RegisteredSource,
-        provider: RegisteredProvider,
+        source_name: str,
+        source_registry: SourceRegistry,
+        provider_name: str,
+        provider_registry: ProviderRegistry,
         event_type: EventType
     ) -> RegisteredPartitionEvent | ValidationFailed | FailedPersist | LookupFailed:
-        match partition.safe_validate():
+        
+        simple_partition = SimplePartition(start, end)
+        match simple_partition.safe_validate():
             case ValidationFailed() as failed_validation:
                 return failed_validation
-        
-        if not partition_registry.is_registered(partition, source, provider):
-            return LookupFailed(f"<<{partition}>> by [<<{source}>>, <<{provider}>>] is not registered")
-        
-        
-        event = PartitionEvent(
+
+        match partition_registry.lookup_registered(simple_partition, source, provider):
+            case None:
+                return LookupFailed(f"<<{partition}>> by [<<{source}>>, <<{provider}>>] is not registered. Register partition first...")
+            case RegisteredPartition() as registered_partition: ...
+
+        event = SimplePartitionEvent(
             partition=partition,
             source=source,
             provider=provider,
             event_type=event_type
         )
 
-        match self.persist(event):
-            case SuccededPersist(): ...
-            case fail:
-                raise ValueError(fail.error_message)
-        
-        registered_event = RegisteredPartitionEvent(
-            partition=event.partition,
-            source=event.source,
-            provider=event.provider,
-            event_type=event.event_type,
-            created_at=event.created_at
-        )
-        self.cache[event] = registered_event
-        return registered_event
-
-    def get_partition_id(
-        self,
-        partition: Partition,
-        source: RegisteredSource,
-        provider: RegisteredProvider
-    ) -> int | None:
-        session = self.session
-        row = (
-            session
-            .query(PartitionsRegistryORM.id)
-            .join(SourcesRegistryORM, SourcesRegistryORM.id == PartitionsRegistryORM.source_id)
-            .join(ProvidersRegistryORM, ProvidersRegistryORM.id == PartitionsRegistryORM.provider_id)
-            .filter(ProvidersRegistryORM.name == provider.name)
-            .filter(SourcesRegistryORM.name == source.name)
-            .filter(PartitionsRegistryORM.start == partition.start)
-            .filter(PartitionsRegistryORM.end == partition.end)
-            .one_or_none()
-        )
-        return None if not row else row[0]
+        match self.persist(registered_partition, event):
+            case FailedPersist() as failed_persist:
+                return failed_persist
+            case RegisteredPartitionEvent() as registered_event:
+                self.cache[event] = registered_event
+                return registered_event
 
     def persist(
         self,
-        event: PartitionEvent
+        partition: RegisteredPartition,
+        event: SimplePartitionEvent
     ) -> RegisteredPartitionEvent | FailedPersist:
-        session = self.session
-        
-            
+        session = self.session    
         record = PartitionEventsORM(
-            partition_id=partition_id,
+            partition_id=partition.partition_id,
             event_type=event.event_type.value,
-            created_at=event.created_at
         )
         try:
             session.add(record)
@@ -111,7 +87,20 @@ class EventsRegistry:
             return FailedPersist(f"Persist failed with error: {e}")
         else:
             session.commit()
-        return SuccededPersist()
+        
+        match record.event_type:
+            case EventType.LOCK.value:
+                event_type = EventType.LOCK
+            case EventType.UNLOCK.value:
+                event_type = EventType.UNLOCK
+            case unexpected:
+                return FailedPersist(f"Event type has unexpected value: {unexpected}")
+        
+        return RegisteredPartitionEvent(
+            partition=partition,
+            event_type=event_type,
+            registered_at=record.registered_at
+        )
 
     def get_source_partitions(
         self,
