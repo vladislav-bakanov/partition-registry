@@ -14,19 +14,18 @@ services:
 
   adminer:
     image: adminer
-    env_file:
-      - path: ./.env
-        required: true
     restart: always
     ports:
       - 8080:8080
-    labels:
-      'app': ${APPLICATION_NAME}
     depends_on:
       - postgres-db
     environment:
       - ADMINER_DESIGN=dracula
-      - ADMINER_DEFAULT_SERVER=PostgreSQL
+      - ADMINER_DEFAULT_ENGINE=PostgreSQL
+      - ADMINER_DEFAULT_SERVER=postgres-db
+      - ADMINER_DEFAULT_USER=postgres
+      - ADMINER_DEFAULT_PASSWORD=changeme
+      - ADMINER_DEFAULT_DB=partition_registry
 
   web-application:
     build: .
