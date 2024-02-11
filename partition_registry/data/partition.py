@@ -1,103 +1,72 @@
-import dataclasses as dc
-import datetime as dt
 from typing import Protocol
 
-from functools import cached_property
-
+import dataclasses as dc
+import datetime as dt
 import pytz
+
+from partition_registry.data.provider import RegisteredProvider
+from partition_registry.data.source import RegisteredSource
+
+from partition_registry.data.status import ValidationFailed
+from partition_registry.data.status import ValidationSucceded
+
 
 
 class Partition(Protocol):
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime
 
-    @cached_property
-    def size(self) -> float:
-        """Partition size in seconds"""
-        return (self.end - self.start).total_seconds()
-
-    def validate(self) -> None:
+    def safe_validate(self) -> ValidationFailed | ValidationSucceded:
         """Validate partition properties
-        Raises:
-            ValueError(): in case if partition has the same start and the end
-            ValueError(): in case if partition has end erlier than the end
         """
+        if self.start.tzinfo is None or self.start.tzinfo.utcoffset(self.start) is None:
+            return ValidationFailed(f"<<{self.__class__.__name__}.start>> value should contain timezone info...")
+        if self.end.tzinfo is None or self.end.tzinfo.utcoffset(self.end) is None:
+            return ValidationFailed(f"<<{self.__class__.__name__}.end>> value should contain timezone info...")
         if self.start == self.end:
-            raise ValueError("Partition start and end should be different")
-        if self.size < 0:
-            raise ValueError("Partition start should be earlier than partition end")
+            return ValidationFailed("Partition start and end should be different")
+        if self.end < self.start:
+            return ValidationFailed("Partition start should be earlier than partition end")
+        
+        return ValidationSucceded()
 
     def __str__(self) -> str:
         ...
 
     def __repr__(self) -> str:
-        return self.__str__()
-
-    def __hash__(self) -> int:
-        return hash(str(self.start) + str(self.end))
+        return str(self)
 
 
 @dc.dataclass(frozen=True)
 class SimplePartition(Partition):
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return "SimplePartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n" \
-        ")"
-
-    def __hash__(self) -> int:
-        return hash(str(self.start) + str(self.end) + str(self.created_at))
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}'"
+            ")"
+        )
 
 
 @dc.dataclass(frozen=True)
-class LockedPartition(Partition):
+class RegisteredPartition(Partition):
+    partition_id: int
     start: dt.datetime
     end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
+    source: RegisteredSource
+    provider: RegisteredProvider
+    registered_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
 
     def __str__(self) -> str:
-        return "LockedPartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n  " \
-            f"locked_at='{self.locked_at}',\n" \
-        ")"
-
-
-@dc.dataclass(frozen=True)
-class UnlockedPartition(LockedPartition):
-    start: dt.datetime
-    end: dt.datetime
-    created_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    locked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-    unlocked_at: dt.datetime = dc.field(default=dt.datetime.now(pytz.UTC))
-
-    def __str__(self) -> str:
-        return "UnlockedPartition(\n  " \
-            f"start='{self.start}',\n  " \
-            f"end='{self.end}',\n  " \
-            f"created_at='{self.created_at}',\n  " \
-            f"locked_at='{self.locked_at}',\n  " \
-            f"unlocked_at='{self.unlocked_at}'\n" \
-        ")"
-
-
-def is_intersected(p1: "Partition", p2: "Partition") -> bool:
-    """
-    Check that 2 partitions intersect.
-    The order of partitions to check doesn't matter (see ./tests/tests_intersections for more details)
-    p1 (Partition) - partition #1 to check
-    p2 (Partition) - partition #2 to check
-    """
-    return (
-        p1.start <= p2.start < p1.end or p1.start < p2.end <= p1.end
-        or
-        p2.start <= p1.start < p2.end or p2.start < p1.end <= p2.end
-    )
+        return (
+            f"{self.__class__.__name__}("
+            f"start='{self.start}', "
+            f"end='{self.end}', "
+            f"source='{self.source}', "
+            f"provider='{self.provider}', "
+            f"registered_at='{self.registered_at}'"
+            ")"
+        )

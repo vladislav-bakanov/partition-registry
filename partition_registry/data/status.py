@@ -1,94 +1,62 @@
 import dataclasses as dc
 
-from typing import Protocol
-from typing import Optional
+from typing import Any
+from typing import TYPE_CHECKING
 
-from partition_registry.data.partition import UnlockedPartition
-from partition_registry.data.partition import LockedPartition
-from partition_registry.data.source import RegisteredSource
-from partition_registry.data.provider import RegisteredProvider
-
-
-class Status(Protocol):
-    ...
+if TYPE_CHECKING:
+    from partition_registry.data.source import SimpleSource
+    from partition_registry.data.provider import SimpleProvider
+    from partition_registry.data.partition import SimplePartition
 
 
 @dc.dataclass(frozen=True)
-class SuccessStatus(Status):
-    ...
+class Status: ...
 
 
 @dc.dataclass(frozen=True)
-class FailedStatus(Status):
-    error_message: str
+class Success(Status): ...
 
 
 @dc.dataclass(frozen=True)
-class SuccededOnAddToQueueStatus(SuccessStatus):
-    ...
+class Fail(Status):
+    message: str
+
+@dc.dataclass(frozen=True)
+class SuccededPersist(Success): ...
+
+@dc.dataclass(frozen=True)
+class FailedPersist(Fail): ...
+
+@dc.dataclass(frozen=True)
+class ValidationSucceded(Success): ...
+
+@dc.dataclass(frozen=True)
+class ValidationFailed(Fail): ...
+
+@dc.dataclass(frozen=True)
+class FailedRegistration(Fail): ...
+
+@dc.dataclass(frozen=True)
+class LookupFailed(Fail): ...
+
+@dc.dataclass(frozen=True)
+class AlreadyRegistered(Status):
+    obj: "SimpleSource | SimpleProvider | SimplePartition"
+    message: str = dc.field(default="Object already registered...")
+
+@dc.dataclass(frozen=True)
+class SuccededRegistration(Success):
+    obj: Any
+    message: str | None = dc.field(default=None)
+    payload: str | None = dc.field(default=None)
 
 
 @dc.dataclass(frozen=True)
-class FailedOnAddToQueueStatus(FailedStatus):
-    ...
-
+class PartitionReady(Success): ...
 
 @dc.dataclass(frozen=True)
-class SuccededPersist(SuccessStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class FailedPersist(FailedStatus):
-    ...
-
+class PartitionNotReady(Success):
+    reason: str
 
 @dc.dataclass(frozen=True)
-class SuccededPurification(SuccessStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class FailedPurification(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class SuccededLock(SuccessStatus):
-    locked_object: LockedPartition
-    message: Optional[str] = dc.field(default=None)
-
-
-@dc.dataclass(frozen=True)
-class FailedLock(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class SuccededUnlock(SuccessStatus):
-    unlocked_object: UnlockedPartition
-    message: Optional[str] = dc.field(default=None)
-
-@dc.dataclass(frozen=True)
-class FailedUnlock(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class SuccededRegistration(SuccessStatus):
-    registered_object: RegisteredSource | RegisteredProvider
-    message: Optional[str] = dc.field(default=None)
-
-
-@dc.dataclass(frozen=True)
-class FailedRegistration(FailedStatus):
-    ...
-
-
-@dc.dataclass(frozen=True)
-class NotReadyPartition(FailedStatus): ...
-
-
-@dc.dataclass(frozen=True)
-class ReadyPartition(FailedStatus):
-    ready_partition: UnlockedPartition
+class AccessDenied(Fail): ...
