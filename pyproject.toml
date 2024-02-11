@@ -4,12 +4,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "partition-registry"
-description = "Library to work with Partition Registry"
-authors = ["Vladislav Bakanov <rewerty52@ya.ru>"]
+description = "Library to manage Data Sources readiness"
+authors = ["Vladislav Bakanov <vladislav.bakanov@proton.me>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/vladislav-bakanov/partition-registry/blob/master/pyproject.toml"
-version = "0.0.1"
+version = "1.0.0"
 classifiers = [
     "Development Status :: Beta",
     "Programming Language :: Python :: 3.11",
@@ -20,7 +20,6 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "3.11.7"
 SQLAlchemy = "2.0.23"
-# sqlalchemy-stubs = "0.4"
 psycopg2-binary = "2.9.7"
 fastapi = "0.104.1"
 uvicorn = "0.24.0.post1"
