@@ -1,8 +1,8 @@
-name: On push actions
+name: Build & Lint
 run-name: Main action flow
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  Lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/wemake-python-styleguide
