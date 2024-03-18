@@ -5,4 +5,5 @@ jobs:
   Lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/wemake-python-styleguide
+      - name: wemake-python-styleguide
+        uses: wemake-services/wemake-python-styleguide
