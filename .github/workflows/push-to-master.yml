@@ -2,8 +2,8 @@ name: Build & Lint
 run-name: Main action flow
 on: [push]
 jobs:
-  Lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: wemake-python-styleguide
-        uses: wemake-services/wemake-python-styleguide
+  wemake-linter:
+      runs-on: ubuntu-18.04
+      steps:
+        - name: wemake-python-styleguide
+          uses: wemake-services/wemake-python-styleguide@0.14.0
